@@ -1,182 +1,256 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import { registerRequest } from '../services/api';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Heart, Eye, EyeOff } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-const logo = "/placeholder.svg";
+export default function SignupScreen({ navigation }: any) {
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmaSenha, setConfirmaSenha] = useState('');
+  const [tipo, setTipo] = useState<'PACIENTE' | 'MEDICO'>('PACIENTE');
+  const [loading, setLoading] = useState(false);
 
-const Signup = () => {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    userType: "patient"
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("As senhas não coincidem");
+  async function handleSignup() {
+    if (!nome || !email || !senha || !confirmaSenha) {
+      Alert.alert('Erro', 'Preencha todos os campos');
       return;
     }
 
-    setIsLoading(true);
-    
-    // Simulate signup API call
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.success("Conta criada com sucesso!");
-      navigate("/dashboard");
-    }, 1500);
-  };
+    if (senha !== confirmaSenha) {
+      Alert.alert('Erro', 'As senhas não coincidem');
+      return;
+    }
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+    if (senha.length < 6) {
+      Alert.alert('Erro', 'A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await registerRequest({ nome, email, senha, tipo });
+      Alert.alert(
+        'Sucesso!',
+        'Conta criada com sucesso. Faça login para continuar.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+      );
+    } catch (error: any) {
+      const message = error.response?.data?.erro || 'Erro ao criar conta';
+      Alert.alert('Erro', message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center space-x-2">
-            <img src={logo} alt="Seja Atendido" className="h-8 w-8" />
-            <span className="text-2xl font-bold text-gray-900">Seja Atendido</span>
-          </Link>
-        </div>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.title}>Criar Conta</Text>
+        <Text style={styles.subtitle}>Preencha seus dados</Text>
 
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Criar conta</CardTitle>
-            <CardDescription className="text-center">
-              Junte-se ao Seja Atendido para começar a gerenciar sua saúde
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Nome completo</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Digite seu nome completo"
-                  value={formData.fullName}
-                  onChange={(e) => handleInputChange("fullName", e.target.value)}
-                  required
-                />
-              </div>
+        <TextInput
+          style={styles.input}
+          placeholder="Nome completo"
+          value={nome}
+          onChangeText={setNome}
+          editable={!loading}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Digite seu e-mail"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  required
-                />
-              </div>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          editable={!loading}
+        />
 
-              <div className="space-y-2">
-                <Label>Eu sou um</Label>
-                <RadioGroup
-                  value={formData.userType}
-                  onValueChange={(value) => handleInputChange("userType", value)}
-                  className="flex space-x-6"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="patient" id="patient" />
-                    <Label htmlFor="patient">Paciente</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="doctor" id="doctor" />
-                    <Label htmlFor="doctor">Médico</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Crie uma senha"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
+        <TextInput
+          style={styles.input}
+          placeholder="Senha (mínimo 6 caracteres)"
+          value={senha}
+          onChangeText={setSenha}
+          secureTextEntry
+          editable={!loading}
+        />
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar senha</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirme sua senha"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
+        <TextInput
+          style={styles.input}
+          placeholder="Confirmar senha"
+          value={confirmaSenha}
+          onChangeText={setConfirmaSenha}
+          secureTextEntry
+          editable={!loading}
+        />
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Criando conta..." : "Criar conta"}
-              </Button>
-            </form>
-            
-            <div className="mt-6 text-center text-sm">
-              Já tem uma conta?{" "}
-              <Link to="/login" className="text-blue-600 hover:underline font-medium">
-                Entrar
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        <Text style={styles.label}>Tipo de conta:</Text>
+        <View style={styles.tipoContainer}>
+          <TouchableOpacity
+            style={[
+              styles.tipoButton,
+              tipo === 'PACIENTE' && styles.tipoButtonActive,
+            ]}
+            onPress={() => setTipo('PACIENTE')}
+            disabled={loading}
+          >
+            <Text
+              style={[
+                styles.tipoText,
+                tipo === 'PACIENTE' && styles.tipoTextActive,
+              ]}
+            >
+              Paciente
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tipoButton,
+              tipo === 'MEDICO' && styles.tipoButtonActive,
+            ]}
+            onPress={() => setTipo('MEDICO')}
+            disabled={loading}
+          >
+            <Text
+              style={[
+                styles.tipoText,
+                tipo === 'MEDICO' && styles.tipoTextActive,
+              ]}
+            >
+              Médico
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleSignup}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Cadastrar</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => navigation.navigate('Login')}
+          disabled={loading}
+        >
+          <Text style={styles.linkText}>
+            Já tem conta? <Text style={styles.linkTextBold}>Fazer login</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
-};
+}
 
-export default Signup;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    padding: 20,
+    paddingTop: 60,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 12,
+    fontWeight: '600',
+  },
+  tipoContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  tipoButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  tipoButtonActive: {
+    borderColor: '#007AFF',
+    backgroundColor: '#E3F2FD',
+  },
+  tipoText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
+  },
+  tipoTextActive: {
+    color: '#007AFF',
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  linkButton: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  linkText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  linkTextBold: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+});

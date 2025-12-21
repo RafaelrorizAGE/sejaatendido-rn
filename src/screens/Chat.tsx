@@ -1,268 +1,433 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { User, Send, Phone, Video, MoreVertical, ArrowLeft, Search, Paperclip } from "lucide-react";
-const logo = "/placeholder.svg";
-import { Link } from "react-router-dom";
-import { useState } from "react";
+interface Message {
+  id: string;
+  sender: 'user' | 'doctor';
+  content: string;
+  time: string;
+}
 
-const Chat = () => {
-  const [selectedChat, setSelectedChat] = useState(1);
-  const [newMessage, setNewMessage] = useState("");
+interface ChatContact {
+  id: string;
+  name: string;
+  specialty: string;
+  lastMessage: string;
+  time: string;
+  unread: number;
+  online: boolean;
+}
 
-  const chats = [
+export default function Chat({ navigation }: any) {
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const [newMessage, setNewMessage] = useState('');
+
+  const contacts: ChatContact[] = [
     {
-      id: 1,
-      doctorName: "Dr. Sarah Johnson",
-      specialty: "Cardiologia",
-      lastMessage: "Seus exames estão prontos. Podemos conversar hoje às 15h?",
-      time: "14:30",
+      id: '1',
+      name: 'Dr. Sarah Johnson',
+      specialty: 'Cardiologia',
+      lastMessage: 'Seus exames estão prontos.',
+      time: '14:30',
       unread: 2,
       online: true,
-      avatar: "/placeholder-doctor1.jpg"
     },
     {
-      id: 2,
-      doctorName: "Dr. Michael Chen",
-      specialty: "Dermatologia",
-      lastMessage: "Obrigado por compartilhar as fotos. Vou analisar e retorno em breve.",
-      time: "12:45",
+      id: '2',
+      name: 'Dr. Michael Chen',
+      specialty: 'Dermatologia',
+      lastMessage: 'Obrigado por compartilhar.',
+      time: '12:45',
       unread: 0,
       online: false,
-      avatar: "/placeholder-doctor2.jpg"
     },
     {
-      id: 3,
-      doctorName: "Dr. Ana Santos",
-      specialty: "Clínica Geral",
-      lastMessage: "Lembre-se de tomar o medicamento após as refeições.",
-      time: "10:20",
+      id: '3',
+      name: 'Dr. Ana Santos',
+      specialty: 'Clínica Geral',
+      lastMessage: 'Lembre-se de tomar o medicamento.',
+      time: '10:20',
       unread: 0,
       online: true,
-      avatar: "/placeholder-doctor3.jpg"
-    }
+    },
   ];
 
-  const messages = [
+  const [messages] = useState<Message[]>([
     {
-      id: 1,
-      sender: "doctor",
-      content: "Olá! Como você está se sentindo hoje?",
-      time: "14:00",
-      senderName: "Dr. Sarah Johnson"
+      id: '1',
+      sender: 'doctor',
+      content: 'Olá! Como você está se sentindo hoje?',
+      time: '14:00',
     },
     {
-      id: 2,
-      sender: "patient",
-      content: "Olá, doutor! Estou me sentindo melhor, obrigado. A medicação está funcionando bem.",
-      time: "14:05",
-      senderName: "Você"
+      id: '2',
+      sender: 'user',
+      content: 'Olá, doutor! Estou me sentindo melhor, obrigado.',
+      time: '14:05',
     },
     {
-      id: 3,
-      sender: "doctor",
-      content: "Que bom! Seus exames de sangue chegaram. Os resultados estão dentro do esperado.",
-      time: "14:10",
-      senderName: "Dr. Sarah Johnson"
+      id: '3',
+      sender: 'doctor',
+      content: 'Que bom! Seus exames de sangue chegaram. Os resultados estão dentro do esperado.',
+      time: '14:10',
     },
     {
-      id: 4,
-      sender: "patient",
-      content: "Excelente! Preciso continuar com a mesma dosagem?",
-      time: "14:15",
-      senderName: "Você"
+      id: '4',
+      sender: 'user',
+      content: 'Excelente! Preciso continuar com a mesma dosagem?',
+      time: '14:15',
     },
     {
-      id: 5,
-      sender: "doctor",
-      content: "Sim, continue com a mesma dosagem por mais 2 semanas. Seus exames estão prontos. Podemos conversar hoje às 15h?",
-      time: "14:30",
-      senderName: "Dr. Sarah Johnson"
-    }
-  ];
+      id: '5',
+      sender: 'doctor',
+      content: 'Sim, continue com a mesma dosagem por mais 2 semanas.',
+      time: '14:30',
+    },
+  ]);
 
-  const handleSendMessage = () => {
+  function handleSendMessage() {
     if (newMessage.trim()) {
-      console.log("Sending message:", newMessage);
-      // Here you would connect to your backend/database
-      setNewMessage("");
+      // Aqui você adicionaria a lógica para enviar mensagem
+      setNewMessage('');
     }
-  };
+  }
 
-  const selectedChatData = chats.find(chat => chat.id === selectedChat);
+  if (selectedChat) {
+    const contact = contacts.find((c) => c.id === selectedChat);
+
+    return (
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Chat Header */}
+        <View style={styles.chatHeader}>
+          <TouchableOpacity onPress={() => setSelectedChat(null)}>
+            <Text style={styles.backButton}>← Voltar</Text>
+          </TouchableOpacity>
+          <View style={styles.chatHeaderInfo}>
+            <Text style={styles.chatHeaderName}>{contact?.name}</Text>
+            <Text style={styles.chatHeaderStatus}>
+              {contact?.online ? '🟢 Online' : '⚫ Offline'}
+            </Text>
+          </View>
+          <TouchableOpacity>
+            <Text style={styles.videoCall}>📹</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Messages */}
+        <FlatList
+          data={messages}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messagesContainer}
+          renderItem={({ item }) => (
+            <View
+              style={[
+                styles.messageBubble,
+                item.sender === 'user' ? styles.userBubble : styles.doctorBubble,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.messageText,
+                  item.sender === 'user' ? styles.userMessageText : styles.doctorMessageText,
+                ]}
+              >
+                {item.content}
+              </Text>
+              <Text
+                style={[
+                  styles.messageTime,
+                  item.sender === 'user' ? styles.userMessageTime : styles.doctorMessageTime,
+                ]}
+              >
+                {item.time}
+              </Text>
+            </View>
+          )}
+        />
+
+        {/* Message Input */}
+        <View style={styles.inputContainer}>
+          <TouchableOpacity style={styles.attachButton}>
+            <Text>📎</Text>
+          </TouchableOpacity>
+          <TextInput
+            style={styles.messageInput}
+            placeholder="Digite sua mensagem..."
+            value={newMessage}
+            onChangeText={setNewMessage}
+            multiline
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
+            onPress={handleSendMessage}
+            disabled={!newMessage.trim()}
+          >
+            <Text style={styles.sendButtonText}>➤</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <View style={styles.container}>
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link to="/dashboard">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-2">
-              <img src={logo} alt="Seja Atendido" className="h-8 w-8" />
-              <span className="text-2xl font-bold text-gray-900">Seja Atendido</span>
-            </div>
-          </div>
-        </div>
-      </header>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backButton}>← Voltar</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Conversas</Text>
+        <View style={{ width: 60 }} />
+      </View>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
-          {/* Chat List */}
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Conversas</span>
-                <Button variant="ghost" size="sm">
-                  <Search className="h-4 w-4" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="space-y-1">
-                {chats.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className={`p-4 cursor-pointer hover:bg-gray-50 border-l-4 ${
-                      selectedChat === chat.id ? 'border-l-primary bg-primary/5' : 'border-l-transparent'
-                    }`}
-                    onClick={() => setSelectedChat(chat.id)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={chat.avatar} alt={chat.doctorName} />
-                          <AvatarFallback>
-                            {chat.doctorName.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        {chat.online && (
-                          <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-medium text-sm truncate">{chat.doctorName}</h3>
-                          <span className="text-xs text-gray-500">{chat.time}</span>
-                        </div>
-                        <p className="text-xs text-gray-600 mb-1">{chat.specialty}</p>
-                        <p className="text-sm text-gray-700 truncate">{chat.lastMessage}</p>
-                      </div>
-                      {chat.unread > 0 && (
-                        <Badge variant="default" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
-                          {chat.unread}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Chat Window */}
-          <Card className="lg:col-span-2 flex flex-col">
-            {selectedChatData ? (
-              <>
-                {/* Chat Header */}
-                <CardHeader className="border-b">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={selectedChatData.avatar} alt={selectedChatData.doctorName} />
-                          <AvatarFallback>
-                            {selectedChatData.doctorName.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        {selectedChatData.online && (
-                          <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-medium">{selectedChatData.doctorName}</h3>
-                        <p className="text-sm text-gray-600">{selectedChatData.specialty}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm">
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Video className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                {/* Messages */}
-                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.sender === 'patient' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          message.sender === 'patient'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-gray-100 text-gray-900'
-                        }`}
-                      >
-                        <p className="text-sm">{message.content}</p>
-                        <p className={`text-xs mt-1 ${
-                          message.sender === 'patient' ? 'text-primary-foreground/70' : 'text-gray-500'
-                        }`}>
-                          {message.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-
-                {/* Message Input */}
-                <div className="border-t p-4">
-                  <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="sm">
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
-                    <Input
-                      placeholder="Digite sua mensagem..."
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      className="flex-1"
-                    />
-                    <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <User className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Selecione uma conversa para começar</p>
-                </div>
-              </div>
+      {/* Contact List */}
+      <ScrollView style={styles.contactList}>
+        {contacts.map((contact) => (
+          <TouchableOpacity
+            key={contact.id}
+            style={styles.contactItem}
+            onPress={() => setSelectedChat(contact.id)}
+          >
+            <View style={styles.contactAvatar}>
+              <Text style={styles.contactAvatarText}>
+                {contact.name.charAt(0)}
+              </Text>
+              {contact.online && <View style={styles.onlineIndicator} />}
+            </View>
+            <View style={styles.contactInfo}>
+              <View style={styles.contactHeader}>
+                <Text style={styles.contactName}>{contact.name}</Text>
+                <Text style={styles.contactTime}>{contact.time}</Text>
+              </View>
+              <Text style={styles.contactSpecialty}>{contact.specialty}</Text>
+              <Text style={styles.contactLastMessage} numberOfLines={1}>
+                {contact.lastMessage}
+              </Text>
+            </View>
+            {contact.unread > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadText}>{contact.unread}</Text>
+              </View>
             )}
-          </Card>
-        </div>
-      </div>
-    </div>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
   );
-};
+}
 
-export default Chat;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    paddingTop: 50,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  backButton: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  contactList: {
+    flex: 1,
+  },
+  contactItem: {
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  contactAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    position: 'relative',
+  },
+  contactAvatarText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  contactTime: {
+    fontSize: 12,
+    color: '#888',
+  },
+  contactSpecialty: {
+    fontSize: 12,
+    color: '#007AFF',
+    marginTop: 2,
+  },
+  contactLastMessage: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  unreadBadge: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  unreadText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Chat View Styles
+  chatHeader: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    paddingTop: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chatHeaderInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  chatHeaderName: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  chatHeaderStatus: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  videoCall: {
+    fontSize: 24,
+  },
+  messagesContainer: {
+    padding: 16,
+  },
+  messageBubble: {
+    maxWidth: '80%',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  userBubble: {
+    backgroundColor: '#007AFF',
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 4,
+  },
+  doctorBubble: {
+    backgroundColor: '#fff',
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  userMessageText: {
+    color: '#fff',
+  },
+  doctorMessageText: {
+    color: '#333',
+  },
+  messageTime: {
+    fontSize: 10,
+    marginTop: 4,
+  },
+  userMessageTime: {
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'right',
+  },
+  doctorMessageTime: {
+    color: '#888',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    padding: 12,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  attachButton: {
+    padding: 10,
+  },
+  messageInput: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 8,
+    maxHeight: 100,
+    fontSize: 16,
+  },
+  sendButton: {
+    backgroundColor: '#007AFF',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  sendButtonText: {
+    color: '#fff',
+    fontSize: 20,
+  },
+});

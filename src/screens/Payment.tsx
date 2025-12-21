@@ -1,177 +1,355 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import { ArrowLeft, CreditCard, QrCode } from "lucide-react";
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 
-const logo = "/lovable-uploads/750f7a6e-ce06-477e-b176-38d2fe18e906.png";
+type PaymentMethod = 'pix' | 'card';
 
-const Payment = () => {
-  const [method, setMethod] = useState<string>("pix");
+export default function Payment({ navigation, route }: any) {
+  const [method, setMethod] = useState<PaymentMethod>('pix');
+  const [loading, setLoading] = useState(false);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
 
-  useEffect(() => {
-    document.title = "Pagamento | Seja Atendido";
-  }, []);
+  const amount = route?.params?.amount || 150;
 
-  const params = new URLSearchParams(window.location.search);
-  const amount = useMemo(() => {
-    const val = Number(params.get("amount") ?? 0);
-    return Number.isFinite(val) && val > 0 ? val : 150; // valor padrão
-  }, [params]);
+  const pixCode = '00020126BR.GOV.BCB.PIX...EXEMPLO';
 
-  const handlePay = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    toast.success(`Pagamento (${method.toUpperCase()}) simulado com sucesso.`);
-  };
+  async function handlePayment() {
+    setLoading(true);
+    
+    // Simular processamento
+    setTimeout(() => {
+      setLoading(false);
+      Alert.alert(
+        'Pagamento Confirmado!',
+        'Seu pagamento foi processado com sucesso.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Dashboard') }]
+      );
+    }, 2000);
+  }
 
-  const copyPixCode = async () => {
-    try {
-      const code = "00020126BR.GOV.BCB.PIX...EXEMPLO";
-      await navigator.clipboard.writeText(code);
-      toast.success("Código PIX copiado");
-    } catch (err) {
-      toast.error("Não foi possível copiar o código PIX");
-    }
-  };
+  function copyPixCode() {
+    Alert.alert('Código PIX', 'Código copiado para a área de transferência!');
+  }
 
   return (
-    <div className="min-h-screen bg-background">
+    <View style={styles.container}>
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/" className="shrink-0">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="Seja Atendido" className="h-7 w-7" />
-            <span className="text-xl font-bold">Pagamento</span>
-          </div>
-        </div>
-      </header>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backButton}>← Voltar</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Pagamento</Text>
+        <View style={{ width: 60 }} />
+      </View>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Métodos de pagamento */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Escolha o método</CardTitle>
-                <CardDescription>Selecione como deseja pagar sua consulta</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="pix" onValueChange={setMethod} className="w-full">
-                  <TabsList className="grid grid-cols-3 w-full">
-                    <TabsTrigger value="pix">PIX</TabsTrigger>
-                    <TabsTrigger value="debito">Débito</TabsTrigger>
-                    <TabsTrigger value="credito">Crédito</TabsTrigger>
-                  </TabsList>
+      <ScrollView style={styles.content}>
+        {/* Amount Card */}
+        <View style={styles.amountCard}>
+          <Text style={styles.amountLabel}>Valor da Consulta</Text>
+          <Text style={styles.amountValue}>R$ {amount.toFixed(2)}</Text>
+        </View>
 
-                  {/* PIX */}
-                  <TabsContent value="pix" className="space-y-6">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-48 h-48 rounded-md bg-muted grid place-items-center">
-                        <QrCode className="h-16 w-16 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm text-muted-foreground text-center max-w-sm">
-                        Escaneie o QR Code acima no app do seu banco ou copie o código PIX.
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={copyPixCode}>Copiar código PIX</Button>
-                        <Button onClick={handlePay}>Confirmar pagamento</Button>
-                      </div>
-                    </div>
-                  </TabsContent>
+        {/* Payment Method Tabs */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            style={[styles.tab, method === 'pix' && styles.tabActive]}
+            onPress={() => setMethod('pix')}
+          >
+            <Text style={[styles.tabText, method === 'pix' && styles.tabTextActive]}>
+              💎 PIX
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, method === 'card' && styles.tabActive]}
+            onPress={() => setMethod('card')}
+          >
+            <Text style={[styles.tabText, method === 'card' && styles.tabTextActive]}>
+              💳 Cartão
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-                  {/* Débito */}
-                  <TabsContent value="debito">
-                    <form onSubmit={handlePay} className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="numero-debito">Número do cartão</Label>
-                        <Input id="numero-debito" inputMode="numeric" placeholder="0000 0000 0000 0000" required />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="nome-debito">Nome impresso no cartão</Label>
-                        <Input id="nome-debito" placeholder="Nome completo" required />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="validade-debito">Validade (MM/AA)</Label>
-                          <Input id="validade-debito" placeholder="12/29" required />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="cvv-debito">CVV</Label>
-                          <Input id="cvv-debito" placeholder="123" inputMode="numeric" required />
-                        </div>
-                      </div>
-                      <Button type="submit" className="justify-center">
-                        <CreditCard className="h-4 w-4 mr-2" /> Pagar com débito
-                      </Button>
-                    </form>
-                  </TabsContent>
+        {/* PIX Payment */}
+        {method === 'pix' && (
+          <View style={styles.paymentSection}>
+            <View style={styles.qrContainer}>
+              <View style={styles.qrPlaceholder}>
+                <Text style={styles.qrText}>📱</Text>
+                <Text style={styles.qrLabel}>QR Code PIX</Text>
+              </View>
+            </View>
 
-                  {/* Crédito */}
-                  <TabsContent value="credito">
-                    <form onSubmit={handlePay} className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="numero-credito">Número do cartão</Label>
-                        <Input id="numero-credito" inputMode="numeric" placeholder="0000 0000 0000 0000" required />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="nome-credito">Nome impresso no cartão</Label>
-                        <Input id="nome-credito" placeholder="Nome completo" required />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="validade-credito">Validade (MM/AA)</Label>
-                          <Input id="validade-credito" placeholder="12/29" required />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="cvv-credito">CVV</Label>
-                          <Input id="cvv-credito" placeholder="123" inputMode="numeric" required />
-                        </div>
-                      </div>
-                      <Button type="submit" className="justify-center">
-                        <CreditCard className="h-4 w-4 mr-2" /> Pagar com crédito
-                      </Button>
-                    </form>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
+            <Text style={styles.pixInstructions}>
+              Escaneie o QR Code acima no app do seu banco ou copie o código PIX.
+            </Text>
 
-          {/* Resumo */}
-          <aside>
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumo</CardTitle>
-                <CardDescription>Revise os detalhes antes de pagar</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <img src={logo} alt="Seja Atendido" className="h-8 w-8" />
-                  <div>
-                    <p className="font-medium">Consulta médica</p>
-                    <p className="text-sm text-muted-foreground">Pagamento seguro</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center pt-2 border-t">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="text-lg font-semibold">R$ {amount.toFixed(2)}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </aside>
-        </div>
-      </main>
-    </div>
+            <TouchableOpacity style={styles.copyButton} onPress={copyPixCode}>
+              <Text style={styles.copyButtonText}>📋 Copiar código PIX</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.payButton, loading && styles.payButtonDisabled]}
+              onPress={handlePayment}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.payButtonText}>Confirmar Pagamento</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Card Payment */}
+        {method === 'card' && (
+          <View style={styles.paymentSection}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Número do cartão</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0000 0000 0000 0000"
+                value={cardNumber}
+                onChangeText={setCardNumber}
+                keyboardType="numeric"
+                maxLength={19}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Nome no cartão</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Nome como está no cartão"
+                value={cardName}
+                onChangeText={setCardName}
+                autoCapitalize="characters"
+              />
+            </View>
+
+            <View style={styles.rowInputs}>
+              <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                <Text style={styles.inputLabel}>Validade</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="MM/AA"
+                  value={expiry}
+                  onChangeText={setExpiry}
+                  keyboardType="numeric"
+                  maxLength={5}
+                />
+              </View>
+              <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                <Text style={styles.inputLabel}>CVV</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="123"
+                  value={cvv}
+                  onChangeText={setCvv}
+                  keyboardType="numeric"
+                  maxLength={4}
+                  secureTextEntry
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.payButton, loading && styles.payButtonDisabled]}
+              onPress={handlePayment}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.payButtonText}>
+                  💳 Pagar R$ {amount.toFixed(2)}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Security Info */}
+        <View style={styles.securityInfo}>
+          <Text style={styles.securityText}>🔒 Pagamento 100% seguro</Text>
+          <Text style={styles.securitySubtext}>
+            Seus dados são protegidos com criptografia de ponta a ponta.
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
   );
-};
+}
 
-export default Payment;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    paddingTop: 50,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  backButton: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  amountCard: {
+    backgroundColor: '#007AFF',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  amountLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+  },
+  amountValue: {
+    color: '#fff',
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  tabActive: {
+    backgroundColor: '#007AFF',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tabTextActive: {
+    color: '#fff',
+  },
+  paymentSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  qrContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  qrPlaceholder: {
+    width: 200,
+    height: 200,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qrText: {
+    fontSize: 64,
+  },
+  qrLabel: {
+    marginTop: 8,
+    color: '#666',
+    fontSize: 14,
+  },
+  pixInstructions: {
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  copyButton: {
+    backgroundColor: '#f0f0f0',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  copyButtonText: {
+    color: '#333',
+    fontWeight: '600',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+  },
+  payButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  payButtonDisabled: {
+    opacity: 0.6,
+  },
+  payButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  securityInfo: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  securityText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4CAF50',
+  },
+  securitySubtext: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+});

@@ -1,202 +1,395 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from 'react-native';
+import { clearAuthSession, getUser } from '../storage/asyncStorage';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, Bell, Plus, Stethoscope, FileText, Users } from "lucide-react";
-const logo = "/placeholder.svg";
-import { Link } from "react-router-dom";
+interface Consulta {
+  id: string;
+  paciente: string;
+  hora: string;
+  tipo: string;
+  status: string;
+}
 
-const DoctorDashboard = () => {
-  const todaysAppointments = [
-    {
-      id: 1,
-      patient: "Maria Silva",
-      time: "09:00",
-      type: "Consulta de rotina",
-      status: "confirmado"
-    },
-    {
-      id: 2,
-      patient: "João Santos",
-      time: "10:30",
-      type: "Retorno",
-      status: "confirmado"
-    },
-    {
-      id: 3,
-      patient: "Ana Costa",
-      time: "14:00",
-      type: "Primeira consulta",
-      status: "pendente"
-    },
-    {
-      id: 4,
-      patient: "Carlos Oliveira",
-      time: "15:30",
-      type: "Exames",
-      status: "confirmado"
+export default function DoctorDashboard({ navigation }: any) {
+  const [consultas, setConsultas] = useState<Consulta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [stats, setStats] = useState({
+    totalPacientes: 0,
+    consultasHoje: 0,
+    pendentes: 0,
+  });
+
+  useEffect(() => {
+    loadData();
+    loadUserName();
+  }, []);
+
+  async function loadUserName() {
+    const user = await getUser();
+    if (user) {
+      setUserName(user.nome.split(' ')[0]);
     }
-  ];
+  }
 
-  const stats = {
-    totalPatients: 156,
-    todayAppointments: 8,
-    pendingReports: 3,
-    nextAppointment: "09:00"
-  };
+  async function loadData() {
+    try {
+      // Simular dados - substituir por chamada API real
+      setConsultas([
+        { id: '1', paciente: 'Maria Silva', hora: '09:00', tipo: 'Consulta', status: 'confirmado' },
+        { id: '2', paciente: 'João Santos', hora: '10:30', tipo: 'Retorno', status: 'confirmado' },
+        { id: '3', paciente: 'Ana Costa', hora: '14:00', tipo: 'Primeira consulta', status: 'pendente' },
+      ]);
+      setStats({
+        totalPacientes: 156,
+        consultasHoje: 8,
+        pendentes: 3,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  async function handleLogout() {
+    Alert.alert('Sair', 'Tem certeza que deseja sair?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Sair',
+        style: 'destructive',
+        onPress: async () => {
+          await clearAuthSession();
+          navigation.replace('Login');
+        },
+      },
+    ]);
+  }
+
+  function onRefresh() {
+    setRefreshing(true);
+    loadData();
+  }
+
+  function getStatusColor(status: string) {
+    switch (status.toLowerCase()) {
+      case 'confirmado':
+        return '#4CAF50';
+      case 'pendente':
+        return '#FF9800';
+      case 'cancelada':
+        return '#F44336';
+      default:
+        return '#9E9E9E';
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <View style={styles.container}>
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <img src={logo} alt="Seja Atendido" className="h-8 w-8" />
-            <span className="text-2xl font-bold text-gray-900">Seja Atendido</span>
-            <Badge variant="secondary" className="ml-2">
-              <Stethoscope className="h-3 w-3 mr-1" />
-              Médico
-            </Badge>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm">
-              <Bell className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm">
-              <User className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Dr. {userName}</Text>
+          <Text style={styles.subtitle}>Área do Médico</Text>
+        </View>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Text style={styles.logoutText}>Sair</Text>
+        </TouchableOpacity>
+      </View>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bom dia, Dr. Ricardo!</h1>
-          <p className="text-gray-600">Você tem {stats.todayAppointments} consultas agendadas para hoje.</p>
-        </div>
-
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Stats Cards */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pacientes</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalPatients}</p>
-                </div>
-                <Users className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.totalPacientes}</Text>
+            <Text style={styles.statLabel}>Pacientes</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.consultasHoje}</Text>
+            <Text style={styles.statLabel}>Hoje</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.pendentes}</Text>
+            <Text style={styles.statLabel}>Pendentes</Text>
+          </View>
+        </View>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Hoje</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.todayAppointments}</p>
-                </div>
-                <Calendar className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Today's Appointments */}
+        <Text style={styles.sectionTitle}>Consultas de Hoje</Text>
+        {consultas.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyText}>Nenhuma consulta hoje</Text>
+          </View>
+        ) : (
+          consultas.map((consulta) => (
+            <View key={consulta.id} style={styles.consultaCard}>
+              <View style={styles.consultaHeader}>
+                <View style={styles.consultaTime}>
+                  <Text style={styles.timeText}>{consulta.hora}</Text>
+                </View>
+                <View style={styles.consultaInfo}>
+                  <Text style={styles.pacienteName}>{consulta.paciente}</Text>
+                  <Text style={styles.consultaTipo}>{consulta.tipo}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusColor(consulta.status) },
+                  ]}
+                >
+                  <Text style={styles.statusText}>{consulta.status}</Text>
+                </View>
+              </View>
+              <View style={styles.consultaActions}>
+                <TouchableOpacity style={styles.actionButton}>
+                  <Text style={styles.actionButtonText}>Ver detalhes</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.actionButton, styles.primaryButton]}>
+                  <Text style={styles.primaryButtonText}>Iniciar consulta</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
+        )}
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Relatórios</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.pendingReports}</p>
-                </div>
-                <FileText className="h-8 w-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Quick Actions */}
+        <Text style={styles.sectionTitle}>Ações Rápidas</Text>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Profile')}
+          >
+            <Text style={styles.actionIcon}>👤</Text>
+            <Text style={styles.actionText}>Meu Perfil</Text>
+          </TouchableOpacity>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Próxima</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.nextAppointment}</p>
-                </div>
-                <Clock className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <TouchableOpacity style={styles.actionCard}>
+            <Text style={styles.actionIcon}>📊</Text>
+            <Text style={styles.actionText}>Relatórios</Text>
+          </TouchableOpacity>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Today's Appointments */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5" />
-                <span>Consultas de hoje</span>
-              </CardTitle>
-              <CardDescription>Sua agenda para {new Date().toLocaleDateString('pt-BR')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {todaysAppointments.map((appointment) => (
-                  <div
-                    key={appointment.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{appointment.patient}</h3>
-                      <p className="text-sm text-gray-600">{appointment.type}</p>
-                      <div className="flex items-center space-x-1 mt-1 text-sm text-gray-500">
-                        <Clock className="h-4 w-4" />
-                        <span>{appointment.time}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge
-                        variant={appointment.status === "confirmado" ? "default" : "secondary"}
-                      >
-                        {appointment.status}
-                      </Badge>
-                      <Button variant="outline" size="sm">
-                        Atender
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ações rápidas</CardTitle>
-              <CardDescription>Ferramentas do dia a dia</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button className="w-full justify-start" variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova consulta
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
-                Criar relatório
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <Users className="h-4 w-4 mr-2" />
-                Gerenciar pacientes
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <Calendar className="h-4 w-4 mr-2" />
-                Ver agenda completa
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+          <TouchableOpacity style={styles.actionCard}>
+            <Text style={styles.actionIcon}>⚙️</Text>
+            <Text style={styles.actionText}>Configurações</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
   );
-};
+}
 
-export default DoctorDashboard;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    backgroundColor: '#4CAF50',
+    padding: 20,
+    paddingTop: 50,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
+  logoutButton: {
+    padding: 8,
+  },
+  logoutText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  emptyState: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  consultaCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  consultaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  consultaTime: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  timeText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  consultaInfo: {
+    flex: 1,
+  },
+  pacienteName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  consultaTipo: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  consultaActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  actionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  actionButtonText: {
+    color: '#666',
+    fontWeight: '600',
+  },
+  primaryButton: {
+    backgroundColor: '#4CAF50',
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  actionText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+});

@@ -1,211 +1,384 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { fetchMedicos, createConsulta, Medico } from '../services/api';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Heart, ArrowLeft, Star, MapPin } from "lucide-react";
-const logo = "/lovable-uploads/750f7a6e-ce06-477e-b176-38d2fe18e906.png";
-import { Link } from "react-router-dom";
-import { toast } from "sonner";
-
-const BookAppointment = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedTime, setSelectedTime] = useState<string>("");
-  const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
-
-  const doctors = [
-    {
-      id: 1,
-      name: "Dr. Sarah Johnson",
-      specialty: "Cardiologia",
-      rating: 4.9,
-      reviews: 127,
-      location: "Centro Médico Downtown",
-      experience: "15 anos",
-      price: 150,
-      image: "/placeholder.svg"
-    },
-    {
-      id: 2,
-      name: "Dr. Michael Chen",
-      specialty: "Dermatologia",
-      rating: 4.8,
-      reviews: 98,
-      location: "Clínica de Cuidados da Pele",
-      experience: "12 anos",
-      price: 120,
-      image: "/placeholder.svg"
-    },
-    {
-      id: 3,
-      name: "Dr. Emily Rodriguez",
-      specialty: "Pediatria",
-      rating: 4.9,
-      reviews: 156,
-      location: "Centro de Saúde Infantil",
-      experience: "18 anos",
-      price: 100,
-      image: "/placeholder.svg"
-    }
-  ];
+export default function BookAppointment({ navigation }: any) {
+  const [medicos, setMedicos] = useState<Medico[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedMedico, setSelectedMedico] = useState<Medico | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [motivo, setMotivo] = useState('');
+  const [booking, setBooking] = useState(false);
 
   const timeSlots = [
-    "09:00", "09:30", "10:00", "10:30",
-    "11:00", "11:30", "14:00", "14:30",
-    "15:00", "15:30", "16:00", "16:30"
+    '09:00', '09:30', '10:00', '10:30',
+    '11:00', '11:30', '14:00', '14:30',
+    '15:00', '15:30', '16:00', '16:30',
   ];
 
-  const handleBookAppointment = () => {
-    if (!selectedDoctor || !selectedDate || !selectedTime) {
-      toast.error("Por favor, selecione um médico, data e horário");
+  const getNextDays = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 1; i <= 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      days.push({
+        date: date.toISOString().split('T')[0],
+        label: date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }),
+      });
+    }
+    return days;
+  };
+
+  useEffect(() => {
+    loadMedicos();
+  }, []);
+
+  async function loadMedicos() {
+    try {
+      const data = await fetchMedicos();
+      setMedicos(data);
+    } catch (error) {
+      console.error('Erro ao carregar médicos:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleBookAppointment() {
+    if (!selectedMedico || !selectedDate || !selectedTime) {
+      Alert.alert('Erro', 'Selecione médico, data e horário');
       return;
     }
 
-    toast.success("Consulta agendada com sucesso!");
-  };
+    setBooking(true);
+    try {
+      const dateTime = `${selectedDate}T${selectedTime}:00`;
+      await createConsulta({
+        medicoId: selectedMedico.id,
+        data: dateTime,
+        motivo: motivo || 'Consulta',
+      });
+      Alert.alert('Sucesso!', 'Consulta agendada com sucesso!', [
+        { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
+      ]);
+    } catch (error: any) {
+      const message = error.response?.data?.erro || 'Erro ao agendar consulta';
+      Alert.alert('Erro', message);
+    } finally {
+      setBooking(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <View style={styles.container}>
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center space-x-4">
-          <Link to="/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div className="flex items-center space-x-2">
-            <img src={logo} alt="Seja Atendido" className="h-6 w-6" />
-            <span className="text-xl font-bold text-gray-900">Agendar consulta</span>
-          </div>
-        </div>
-      </header>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backButton}>← Voltar</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Agendar Consulta</Text>
+        <View style={{ width: 60 }} />
+      </View>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Doctor Selection */}
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Escolha um médico</h2>
-            <div className="space-y-4">
-              {doctors.map((doctor) => (
-                <Card
-                  key={doctor.id}
-                  className={`cursor-pointer transition-all ${
-                    selectedDoctor?.id === doctor.id
-                      ? "ring-2 ring-blue-500 bg-blue-50"
-                      : "hover:shadow-md"
-                  }`}
-                  onClick={() => setSelectedDoctor(doctor)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <img
-                        src={doctor.image}
-                        alt={doctor.name}
-                        className="w-16 h-16 rounded-full bg-gray-200"
-                      />
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">{doctor.name}</h3>
-                        <p className="text-blue-600 font-medium">{doctor.specialty}</p>
-                        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                          <div className="flex items-center space-x-1">
-                            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                            <span>{doctor.rating} ({doctor.reviews} avaliações)</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <MapPin className="h-4 w-4" />
-                            <span>{doctor.location}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-3">
-                          <Badge variant="secondary">{doctor.experience} de experiência</Badge>
-                          <span className="text-lg font-semibold text-gray-900">R$ {doctor.price}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+      <ScrollView style={styles.content}>
+        {/* Step 1: Select Doctor */}
+        <Text style={styles.sectionTitle}>1. Escolha o Médico</Text>
+        {medicos.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Nenhum médico disponível</Text>
+          </View>
+        ) : (
+          medicos.map((medico) => (
+            <TouchableOpacity
+              key={medico.id}
+              style={[
+                styles.medicoCard,
+                selectedMedico?.id === medico.id && styles.medicoCardSelected,
+              ]}
+              onPress={() => setSelectedMedico(medico)}
+            >
+              <View style={styles.medicoAvatar}>
+                <Text style={styles.avatarText}>
+                  {medico.usuario?.nome?.charAt(0) || 'M'}
+                </Text>
+              </View>
+              <View style={styles.medicoInfo}>
+                <Text style={styles.medicoNome}>{medico.usuario?.nome}</Text>
+                <Text style={styles.medicoCRM}>CRM: {medico.crm}</Text>
+                <View style={styles.especialidadesRow}>
+                  {medico.especialidades?.slice(0, 2).map((esp, idx) => (
+                    <View key={idx} style={styles.especialidadeBadge}>
+                      <Text style={styles.especialidadeText}>{esp}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+              {selectedMedico?.id === medico.id && (
+                <Text style={styles.checkmark}>✓</Text>
+              )}
+            </TouchableOpacity>
+          ))
+        )}
 
-          {/* Date and Time Selection */}
-          <div className="space-y-6">
-            {/* Date Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Selecionar data</CardTitle>
-                <CardDescription>Escolha sua data de preferência para a consulta</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={(date) => date < new Date()}
-                  className="rounded-md border"
-                />
-              </CardContent>
-            </Card>
+        {/* Step 2: Select Date */}
+        <Text style={styles.sectionTitle}>2. Escolha a Data</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.datesContainer}>
+          {getNextDays().map((day) => (
+            <TouchableOpacity
+              key={day.date}
+              style={[
+                styles.dateCard,
+                selectedDate === day.date && styles.dateCardSelected,
+              ]}
+              onPress={() => setSelectedDate(day.date)}
+            >
+              <Text
+                style={[
+                  styles.dateText,
+                  selectedDate === day.date && styles.dateTextSelected,
+                ]}
+              >
+                {day.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-            {/* Time Selection */}
-            {selectedDate && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Selecionar horário</CardTitle>
-                  <CardDescription>Horários disponíveis</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-2">
-                    {timeSlots.map((time) => (
-                      <Button
-                        key={time}
-                        variant={selectedTime === time ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedTime(time)}
-                        className="justify-center"
-                      >
-                        {time}
-                      </Button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+        {/* Step 3: Select Time */}
+        <Text style={styles.sectionTitle}>3. Escolha o Horário</Text>
+        <View style={styles.timesContainer}>
+          {timeSlots.map((time) => (
+            <TouchableOpacity
+              key={time}
+              style={[
+                styles.timeCard,
+                selectedTime === time && styles.timeCardSelected,
+              ]}
+              onPress={() => setSelectedTime(time)}
+            >
+              <Text
+                style={[
+                  styles.timeText,
+                  selectedTime === time && styles.timeTextSelected,
+                ]}
+              >
+                {time}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-            {/* Booking Summary */}
-            {selectedDoctor && selectedDate && selectedTime && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Resumo do agendamento</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="font-medium">{selectedDoctor.name}</p>
-                    <p className="text-sm text-gray-600">{selectedDoctor.specialty}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Data e horário</p>
-                    <p className="font-medium">
-                      {selectedDate.toLocaleDateString('pt-BR')} às {selectedTime}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Taxa de consulta</p>
-                    <p className="font-medium">R$ {selectedDoctor.price}</p>
-                  </div>
-                  <Button onClick={handleBookAppointment} className="w-full">
-                    Agendar consulta
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Book Button */}
+        <TouchableOpacity
+          style={[
+            styles.bookButton,
+            (!selectedMedico || !selectedDate || !selectedTime || booking) &&
+              styles.bookButtonDisabled,
+          ]}
+          onPress={handleBookAppointment}
+          disabled={!selectedMedico || !selectedDate || !selectedTime || booking}
+        >
+          {booking ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.bookButtonText}>Confirmar Agendamento</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
-};
+}
 
-export default BookAppointment;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    paddingTop: 50,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  backButton: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  emptyState: {
+    padding: 24,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#666',
+  },
+  medicoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  medicoCardSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#E3F2FD',
+  },
+  medicoAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  medicoInfo: {
+    flex: 1,
+  },
+  medicoNome: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  medicoCRM: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  especialidadesRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 8,
+  },
+  especialidadeBadge: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  especialidadeText: {
+    color: '#007AFF',
+    fontSize: 12,
+  },
+  checkmark: {
+    color: '#007AFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  datesContainer: {
+    marginBottom: 8,
+  },
+  dateCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  dateCardSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#E3F2FD',
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+  },
+  dateTextSelected: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  timesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timeCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  timeCardSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#E3F2FD',
+  },
+  timeText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  timeTextSelected: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  bookButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 32,
+  },
+  bookButtonDisabled: {
+    opacity: 0.6,
+  },
+  bookButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});

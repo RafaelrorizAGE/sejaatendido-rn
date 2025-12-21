@@ -1,254 +1,437 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from 'react-native';
+import { fetchMedicosPendentes, aprovarMedico, recusarMedico, Medico } from '../services/api';
+import { clearAuthSession, getUser } from '../storage/asyncStorage';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Users, Calendar, TrendingUp, Shield, Settings, BarChart3, UserCheck, AlertCircle } from "lucide-react";
-const logo = "/placeholder.svg";
+export default function AdminDashboard({ navigation }: any) {
+  const [medicosPendentes, setMedicosPendentes] = useState<Medico[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [stats, setStats] = useState({
+    totalUsuarios: 0,
+    medicosAtivos: 0,
+    pacientes: 0,
+    consultasHoje: 0,
+  });
 
-const AdminDashboard = () => {
-  const systemStats = {
-    totalUsers: 1247,
-    activeDoctors: 23,
-    totalPatients: 1224,
-    todayAppointments: 67,
-    systemUptime: "99.9%",
-    pendingApprovals: 5
-  };
+  useEffect(() => {
+    loadData();
+    loadUserName();
+  }, []);
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: "new_doctor",
-      message: "Dr. Ana Martins se registrou no sistema",
-      time: "2 horas atrás",
-      status: "pending"
-    },
-    {
-      id: 2,
-      type: "system",
-      message: "Backup automático concluído com sucesso",
-      time: "4 horas atrás",
-      status: "success"
-    },
-    {
-      id: 3,
-      type: "alert",
-      message: "Alta demanda de consultas detectada",
-      time: "6 horas atrás",
-      status: "warning"
-    },
-    {
-      id: 4,
-      type: "user",
-      message: "150 novos pacientes registrados esta semana",
-      time: "1 dia atrás",
-      status: "info"
+  async function loadUserName() {
+    const user = await getUser();
+    if (user) {
+      setUserName(user.nome.split(' ')[0]);
     }
-  ];
+  }
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "new_doctor":
-        return <UserCheck className="h-4 w-4" />;
-      case "system":
-        return <Settings className="h-4 w-4" />;
-      case "alert":
-        return <AlertCircle className="h-4 w-4" />;
-      default:
-        return <Users className="h-4 w-4" />;
+  async function loadData() {
+    try {
+      const pendentes = await fetchMedicosPendentes();
+      setMedicosPendentes(pendentes);
+      
+      // Simular stats - substituir por chamada API real
+      setStats({
+        totalUsuarios: 1247,
+        medicosAtivos: 23,
+        pacientes: 1224,
+        consultasHoje: 67,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "success":
-        return "text-green-600";
-      case "warning":
-        return "text-orange-600";
-      case "pending":
-        return "text-blue-600";
-      default:
-        return "text-gray-600";
-    }
-  };
+  async function handleAprovarMedico(id: string) {
+    Alert.alert('Aprovar Médico', 'Tem certeza que deseja aprovar este médico?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Aprovar',
+        onPress: async () => {
+          try {
+            await aprovarMedico(id);
+            Alert.alert('Sucesso', 'Médico aprovado com sucesso!');
+            loadData();
+          } catch (error) {
+            Alert.alert('Erro', 'Não foi possível aprovar o médico');
+          }
+        },
+      },
+    ]);
+  }
+
+  async function handleRecusarMedico(id: string) {
+    Alert.alert('Recusar Médico', 'Tem certeza que deseja recusar este médico?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Recusar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await recusarMedico(id);
+            Alert.alert('Sucesso', 'Médico recusado');
+            loadData();
+          } catch (error) {
+            Alert.alert('Erro', 'Não foi possível recusar o médico');
+          }
+        },
+      },
+    ]);
+  }
+
+  async function handleLogout() {
+    Alert.alert('Sair', 'Tem certeza que deseja sair?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Sair',
+        style: 'destructive',
+        onPress: async () => {
+          await clearAuthSession();
+          navigation.replace('Login');
+        },
+      },
+    ]);
+  }
+
+  function onRefresh() {
+    setRefreshing(true);
+    loadData();
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#9C27B0" />
+      </View>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <View style={styles.container}>
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <img src={logo} alt="Seja Atendido" className="h-8 w-8" />
-            <span className="text-2xl font-bold text-gray-900">Seja Atendido</span>
-            <Badge variant="secondary" className="ml-2">
-              <Shield className="h-3 w-3 mr-1" />
-              Administrador
-            </Badge>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Admin {userName}</Text>
+          <Text style={styles.subtitle}>Painel Administrativo</Text>
+        </View>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+          <Text style={styles.logoutText}>Sair</Text>
+        </TouchableOpacity>
+      </View>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Painel Administrativo</h1>
-          <p className="text-gray-600">Visão geral do sistema e estatísticas em tempo real.</p>
-        </div>
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.totalUsuarios}</Text>
+            <Text style={styles.statLabel}>Usuários</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.medicosAtivos}</Text>
+            <Text style={styles.statLabel}>Médicos</Text>
+          </View>
+        </View>
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.pacientes}</Text>
+            <Text style={styles.statLabel}>Pacientes</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{stats.consultasHoje}</Text>
+            <Text style={styles.statLabel}>Consultas Hoje</Text>
+          </View>
+        </View>
 
-        {/* System Stats */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Usuários</p>
-                  <p className="text-2xl font-bold text-gray-900">{systemStats.totalUsers}</p>
-                </div>
-                <Users className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Pending Doctors */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Médicos Pendentes</Text>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{medicosPendentes.length}</Text>
+          </View>
+        </View>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Médicos</p>
-                  <p className="text-2xl font-bold text-gray-900">{systemStats.activeDoctors}</p>
-                </div>
-                <UserCheck className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
+        {medicosPendentes.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>✅</Text>
+            <Text style={styles.emptyText}>Nenhum médico pendente de aprovação</Text>
+          </View>
+        ) : (
+          medicosPendentes.map((medico) => (
+            <View key={medico.id} style={styles.medicoCard}>
+              <View style={styles.medicoInfo}>
+                <Text style={styles.medicoNome}>{medico.usuario?.nome}</Text>
+                <Text style={styles.medicoCRM}>CRM: {medico.crm}</Text>
+                <Text style={styles.medicoEmail}>{medico.usuario?.email}</Text>
+                <View style={styles.especialidadesContainer}>
+                  {medico.especialidades?.map((esp, index) => (
+                    <View key={index} style={styles.especialidadeBadge}>
+                      <Text style={styles.especialidadeText}>{esp}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+              <View style={styles.medicoActions}>
+                <TouchableOpacity
+                  style={styles.recusarButton}
+                  onPress={() => handleRecusarMedico(medico.id)}
+                >
+                  <Text style={styles.recusarText}>Recusar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.aprovarButton}
+                  onPress={() => handleAprovarMedico(medico.id)}
+                >
+                  <Text style={styles.aprovarText}>Aprovar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
+        )}
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pacientes</p>
-                  <p className="text-2xl font-bold text-gray-900">{systemStats.totalPatients}</p>
-                </div>
-                <Users className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Quick Actions */}
+        <Text style={styles.sectionTitle}>Ações Rápidas</Text>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity style={styles.actionCard}>
+            <Text style={styles.actionIcon}>👥</Text>
+            <Text style={styles.actionText}>Gerenciar Usuários</Text>
+          </TouchableOpacity>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Consultas hoje</p>
-                  <p className="text-2xl font-bold text-gray-900">{systemStats.todayAppointments}</p>
-                </div>
-                <Calendar className="h-8 w-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
+          <TouchableOpacity style={styles.actionCard}>
+            <Text style={styles.actionIcon}>📊</Text>
+            <Text style={styles.actionText}>Relatórios</Text>
+          </TouchableOpacity>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Uptime</p>
-                  <p className="text-2xl font-bold text-gray-900">{systemStats.systemUptime}</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pendências</p>
-                  <p className="text-2xl font-bold text-gray-900">{systemStats.pendingApprovals}</p>
-                </div>
-                <AlertCircle className="h-8 w-8 text-red-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <BarChart3 className="h-5 w-5" />
-                <span>Atividade recente</span>
-              </CardTitle>
-              <CardDescription>Últimas atividades do sistema</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {recentActivity.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div className={`mt-1 ${getStatusColor(activity.status)}`}>
-                      {getActivityIcon(activity.type)}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
-                    </div>
-                    <Badge 
-                      variant={activity.status === "pending" ? "secondary" : "outline"}
-                      className="text-xs"
-                    >
-                      {activity.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Admin Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ferramentas administrativas</CardTitle>
-              <CardDescription>Gerenciamento do sistema</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button className="w-full justify-start" variant="outline">
-                <Users className="h-4 w-4 mr-2" />
-                Gerenciar usuários
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <UserCheck className="h-4 w-4 mr-2" />
-                Aprovar médicos
-                {systemStats.pendingApprovals > 0 && (
-                  <Badge variant="destructive" className="ml-auto">
-                    {systemStats.pendingApprovals}
-                  </Badge>
-                )}
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Relatórios do sistema
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <Settings className="h-4 w-4 mr-2" />
-                Configurações
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <Calendar className="h-4 w-4 mr-2" />
-                Monitorar consultas
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+          <TouchableOpacity style={styles.actionCard}>
+            <Text style={styles.actionIcon}>⚙️</Text>
+            <Text style={styles.actionText}>Configurações</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
   );
-};
+}
 
-export default AdminDashboard;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    backgroundColor: '#9C27B0',
+    padding: 20,
+    paddingTop: 50,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
+  logoutButton: {
+    padding: 8,
+  },
+  logoutText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginRight: 8,
+  },
+  badge: {
+    backgroundColor: '#9C27B0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  emptyState: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  medicoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  medicoInfo: {
+    marginBottom: 12,
+  },
+  medicoNome: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  medicoCRM: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  medicoEmail: {
+    fontSize: 14,
+    color: '#888',
+    marginTop: 2,
+  },
+  especialidadesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    gap: 8,
+  },
+  especialidadeBadge: {
+    backgroundColor: '#E1BEE7',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  especialidadeText: {
+    color: '#7B1FA2',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  medicoActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  recusarButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFEBEE',
+  },
+  recusarText: {
+    color: '#F44336',
+    fontWeight: '600',
+  },
+  aprovarButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#4CAF50',
+  },
+  aprovarText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    marginTop: 16,
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  actionText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+});
