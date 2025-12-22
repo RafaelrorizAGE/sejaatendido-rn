@@ -49,7 +49,7 @@ export default function AdminDashboard({ navigation }: any) {
         consultasHoje: 67,
       });
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      if (__DEV__) console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

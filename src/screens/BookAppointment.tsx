@@ -48,7 +48,7 @@ export default function BookAppointment({ navigation }: any) {
       const data = await fetchMedicos();
       setMedicos(data);
     } catch (error) {
-      console.error('Erro ao carregar médicos:', error);
+      if (__DEV__) console.error('Erro ao carregar médicos:', error);
     } finally {
       setLoading(false);
     }

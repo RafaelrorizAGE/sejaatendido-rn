@@ -56,7 +56,7 @@ export default function DoctorDashboard({ navigation }: any) {
         pendentes: 3,
       });
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      if (__DEV__) console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

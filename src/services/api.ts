@@ -1,10 +1,23 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios, { AxiosHeaders } from 'axios';
+import { clearAuthSession, getToken } from '../storage/asyncStorage';
 
-// ⚠️ ALTERAR PARA SUA URL DO RENDER QUANDO FIZER DEPLOY
-const API_URL = __DEV__ 
-  ? 'http://localhost:3001'  // Desenvolvimento local
-  : 'https://seu-backend.onrender.com';  // Produção (alterar depois)
+const DEV_API_URL = 'http://localhost:3001';
+const ENV_API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').trim();
+
+// Prefer env var; fallback to localhost only in dev.
+const API_URL = ENV_API_URL || (__DEV__ ? DEV_API_URL : '');
+
+if (!API_URL) {
+  // Fail closed in production builds if API URL is missing.
+  // This prevents accidentally shipping a build that talks to nowhere or to an insecure endpoint.
+  if (!__DEV__) {
+    throw new Error('Missing EXPO_PUBLIC_API_URL for production build');
+  }
+}
+
+if (!__DEV__ && API_URL && !API_URL.startsWith('https://')) {
+  throw new Error('In production, EXPO_PUBLIC_API_URL must use https://');
+}
 
 const api = axios.create({
   baseURL: API_URL,
@@ -17,9 +30,17 @@ const api = axios.create({
 // Interceptor: Adiciona token automaticamente
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('@token');
+    const token = await getToken();
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (!config.headers) {
+        config.headers = new AxiosHeaders();
+      }
+
+      if (config.headers instanceof AxiosHeaders) {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        (config.headers as any).Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -32,8 +53,7 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       // Token expirado - fazer logout
-      await AsyncStorage.removeItem('@token');
-      await AsyncStorage.removeItem('@user');
+      await clearAuthSession();
     }
     return Promise.reject(error);
   }

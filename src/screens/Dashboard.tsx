@@ -35,7 +35,7 @@ export default function Dashboard({ navigation }: any) {
       const data = await fetchMinhasConsultas();
       setConsultas(data);
     } catch (error: any) {
-      console.error('Erro ao carregar consultas:', error);
+      if (__DEV__) console.error('Erro ao carregar consultas:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

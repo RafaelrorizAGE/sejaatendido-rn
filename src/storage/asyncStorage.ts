@@ -1,7 +1,34 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 const TOKEN_KEY = '@token';
 const USER_KEY = '@user';
+
+async function secureSetItem(key: string, value: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(key, value, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+  } catch {
+    await AsyncStorage.setItem(key, value);
+  }
+}
+
+async function secureGetItem(key: string): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch {
+    return await AsyncStorage.getItem(key);
+  }
+}
+
+async function secureDeleteItem(key: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    await AsyncStorage.removeItem(key);
+  }
+}
 
 export interface User {
   id: string;
@@ -12,33 +39,34 @@ export interface User {
 
 // ============ TOKEN ============
 export async function saveToken(token: string): Promise<void> {
-  await AsyncStorage.setItem(TOKEN_KEY, token);
+  await secureSetItem(TOKEN_KEY, token);
 }
 
 export async function getToken(): Promise<string | null> {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  return secureGetItem(TOKEN_KEY);
 }
 
 export async function removeToken(): Promise<void> {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+  await secureDeleteItem(TOKEN_KEY);
 }
 
 // ============ USER ============
 export async function saveUser(user: User): Promise<void> {
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+  await secureSetItem(USER_KEY, JSON.stringify(user));
 }
 
 export async function getUser(): Promise<User | null> {
-  const data = await AsyncStorage.getItem(USER_KEY);
+  const data = await secureGetItem(USER_KEY);
   return data ? JSON.parse(data) : null;
 }
 
 export async function removeUser(): Promise<void> {
-  await AsyncStorage.removeItem(USER_KEY);
+  await secureDeleteItem(USER_KEY);
 }
 
 // ============ CLEAR ALL ============
 export async function clearAll(): Promise<void> {
+  await Promise.all([secureDeleteItem(TOKEN_KEY), secureDeleteItem(USER_KEY)]);
   await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
 }
 

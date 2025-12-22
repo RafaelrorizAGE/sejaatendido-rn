@@ -34,7 +34,7 @@ export default function Profile({ navigation }: any) {
         setEmail(userData.email);
       }
     } catch (error) {
-      console.error('Erro ao carregar usuário:', error);
+      if (__DEV__) console.error('Erro ao carregar usuário:', error);
     } finally {
       setLoading(false);
     }
