@@ -97,6 +97,38 @@ export async function loginGoogleRequest(idToken: string): Promise<AuthResponse>
   return response.data;
 }
 
+export async function confirmEmailRequest(token: string): Promise<void> {
+  try {
+    await api.post('/auth/confirmar-email', { token });
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      await api.post('/auth/confirm-email', { token });
+      return;
+    }
+    throw error;
+  }
+}
+
+export async function resetPasswordRequest(token: string, senha: string): Promise<void> {
+  const payload = {
+    token,
+    senha,
+    novaSenha: senha,
+    password: senha,
+    newPassword: senha,
+  };
+
+  try {
+    await api.post('/auth/resetar-senha', payload);
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      await api.post('/auth/reset-password', payload);
+      return;
+    }
+    throw error;
+  }
+}
+
 // ============ MÉDICOS ============
 export interface Medico {
   id: string;
