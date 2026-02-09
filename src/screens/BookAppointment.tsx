@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { fetchMedicos, createConsulta, Medico } from '../services/api';
+import { showErrorAlert } from '../utils/errorHandler';
 
 export default function BookAppointment({ navigation }: any) {
   const [medicos, setMedicos] = useState<Medico[]>([]);
@@ -71,9 +72,8 @@ export default function BookAppointment({ navigation }: any) {
       Alert.alert('Sucesso!', 'Consulta agendada com sucesso!', [
         { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
       ]);
-    } catch (error: any) {
-      const message = error.response?.data?.erro || 'Erro ao agendar consulta';
-      Alert.alert('Erro', message);
+    } catch (error: unknown) {
+      showErrorAlert(error, 'Erro ao agendar consulta');
     } finally {
       setBooking(false);
     }

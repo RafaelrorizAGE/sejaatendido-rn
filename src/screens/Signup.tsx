@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { registerRequest } from '../services/api';
+import { showErrorAlert } from '../utils/errorHandler';
 
 export default function SignupScreen({ navigation }: any) {
   const [nome, setNome] = useState('');
@@ -45,9 +46,8 @@ export default function SignupScreen({ navigation }: any) {
         'Conta criada com sucesso. Faça login para continuar.',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       );
-    } catch (error: any) {
-      const message = error.response?.data?.erro || 'Erro ao criar conta';
-      Alert.alert('Erro', message);
+    } catch (error: unknown) {
+      showErrorAlert(error, 'Erro ao criar conta');
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { resetPasswordRequest } from '../services/api';
+import { showErrorAlert } from '../utils/errorHandler';
 
 export default function ResetPassword({ route, navigation }: any) {
   const token: string | undefined = useMemo(() => {
@@ -49,12 +50,8 @@ export default function ResetPassword({ route, navigation }: any) {
       Alert.alert('Sucesso', 'Senha alterada com sucesso.', [
         { text: 'OK', onPress: () => navigation.replace('Login') },
       ]);
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.erro ||
-        error?.response?.data?.message ||
-        'Não foi possível alterar sua senha.';
-      Alert.alert('Erro', message);
+    } catch (error: unknown) {
+      showErrorAlert(error, 'Não foi possível alterar sua senha');
     } finally {
       setLoading(false);
     }

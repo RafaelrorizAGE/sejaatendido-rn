@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { confirmEmailRequest } from '../services/api';
+import { showErrorAlert } from '../utils/errorHandler';
 
 export default function ConfirmEmail({ route, navigation }: any) {
   const token: string | undefined = useMemo(() => {
@@ -33,13 +34,10 @@ export default function ConfirmEmail({ route, navigation }: any) {
         await confirmEmailRequest(token);
         if (cancelled) return;
         setDone(true);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (cancelled) return;
-        const message =
-          error?.response?.data?.erro ||
-          error?.response?.data?.message ||
-          'Não foi possível confirmar seu email.';
-        setErrorMessage(message);
+        setErrorMessage(null);
+        showErrorAlert(error, 'Não foi possível confirmar seu email');
       } finally {
         if (!cancelled) setLoading(false);
       }

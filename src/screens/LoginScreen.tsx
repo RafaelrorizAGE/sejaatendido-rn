@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { loginRequest } from '../services/api';
 import { saveAuthSession } from '../storage/asyncStorage';
+import { showErrorAlert } from '../utils/errorHandler';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -26,8 +27,8 @@ export default function LoginScreen({ navigation }: any) {
 
     setLoading(true);
     try {
-      const { token, usuario } = await loginRequest({ email, senha });
-      await saveAuthSession(token, usuario);
+      const { token, usuario, refreshToken } = await loginRequest({ email, senha });
+      await saveAuthSession(token, usuario, refreshToken);
 
       // Navegar baseado no tipo de usuário
       switch (usuario.tipo) {
@@ -43,9 +44,8 @@ export default function LoginScreen({ navigation }: any) {
         default:
           navigation.replace('Home');
       }
-    } catch (error: any) {
-      const message = error.response?.data?.erro || 'Erro ao fazer login';
-      Alert.alert('Erro', message);
+    } catch (error: unknown) {
+      showErrorAlert(error, 'Erro ao fazer login');
     } finally {
       setLoading(false);
     }

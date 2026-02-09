@@ -71,7 +71,10 @@ export default function DoctorDashboard({ navigation }: any) {
         style: 'destructive',
         onPress: async () => {
           await clearAuthSession();
-          navigation.replace('Login');
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
         },
       },
     ]);

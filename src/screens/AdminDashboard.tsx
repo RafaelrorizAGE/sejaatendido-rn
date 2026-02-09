@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { fetchMedicosPendentes, aprovarMedico, recusarMedico, Medico } from '../services/api';
 import { clearAuthSession, getUser } from '../storage/asyncStorage';
+import { showErrorAlert } from '../utils/errorHandler';
 
 export default function AdminDashboard({ navigation }: any) {
   const [medicosPendentes, setMedicosPendentes] = useState<Medico[]>([]);
@@ -67,7 +68,7 @@ export default function AdminDashboard({ navigation }: any) {
             Alert.alert('Sucesso', 'Médico aprovado com sucesso!');
             loadData();
           } catch (error) {
-            Alert.alert('Erro', 'Não foi possível aprovar o médico');
+            showErrorAlert(error, 'Erro');
           }
         },
       },
@@ -86,7 +87,7 @@ export default function AdminDashboard({ navigation }: any) {
             Alert.alert('Sucesso', 'Médico recusado');
             loadData();
           } catch (error) {
-            Alert.alert('Erro', 'Não foi possível recusar o médico');
+            showErrorAlert(error, 'Erro');
           }
         },
       },
@@ -101,7 +102,10 @@ export default function AdminDashboard({ navigation }: any) {
         style: 'destructive',
         onPress: async () => {
           await clearAuthSession();
-          navigation.replace('Login');
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
         },
       },
     ]);

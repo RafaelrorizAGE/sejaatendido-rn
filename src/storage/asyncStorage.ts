@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
 const TOKEN_KEY = '@token';
+const REFRESH_TOKEN_KEY = '@refreshToken';
 const USER_KEY = '@user';
 
 async function secureSetItem(key: string, value: string): Promise<void> {
@@ -50,6 +51,19 @@ export async function removeToken(): Promise<void> {
   await secureDeleteItem(TOKEN_KEY);
 }
 
+// ============ REFRESH TOKEN ============
+export async function saveRefreshToken(refreshToken: string): Promise<void> {
+  await secureSetItem(REFRESH_TOKEN_KEY, refreshToken);
+}
+
+export async function getRefreshToken(): Promise<string | null> {
+  return secureGetItem(REFRESH_TOKEN_KEY);
+}
+
+export async function removeRefreshToken(): Promise<void> {
+  await secureDeleteItem(REFRESH_TOKEN_KEY);
+}
+
 // ============ USER ============
 export async function saveUser(user: User): Promise<void> {
   await secureSetItem(USER_KEY, JSON.stringify(user));
@@ -66,14 +80,24 @@ export async function removeUser(): Promise<void> {
 
 // ============ CLEAR ALL ============
 export async function clearAll(): Promise<void> {
-  await Promise.all([secureDeleteItem(TOKEN_KEY), secureDeleteItem(USER_KEY)]);
-  await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+  await Promise.all([
+    secureDeleteItem(TOKEN_KEY),
+    secureDeleteItem(REFRESH_TOKEN_KEY),
+    secureDeleteItem(USER_KEY),
+  ]);
+
+  await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
 }
 
 // ============ AUTH SESSION ============
-export async function saveAuthSession(token: string, user: User): Promise<void> {
+export async function saveAuthSession(
+  token: string,
+  user: User,
+  refreshToken?: string
+): Promise<void> {
   await Promise.all([
     saveToken(token),
+    refreshToken ? saveRefreshToken(refreshToken) : Promise.resolve(),
     saveUser(user),
   ]);
 }

@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Button } from "react-native";
 import ListItem from "../components/ListItem";
-import { clearAll } from "../storage/asyncStorage";
+import { clearAuthSession } from "../storage/asyncStorage";
 
 export default function HomeScreen({ navigation }: any) {
   const [items] = useState<any[]>([]);
 
   async function handleLogout() {
-    await clearAll();
-    navigation.replace("Login");
+    await clearAuthSession();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Login" }],
+    });
   }
 
   return (
