@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { fetchMinhasConsultas, Consulta } from '../services/api';
 import { clearAuthSession, getUser } from '../storage/asyncStorage';
+import { showErrorAlert } from '../utils/errorHandler';
 
 export default function Dashboard({ navigation }: any) {
   const [consultas, setConsultas] = useState<Consulta[]>([]);
@@ -34,12 +35,29 @@ export default function Dashboard({ navigation }: any) {
     try {
       const data = await fetchMinhasConsultas();
       setConsultas(data);
-    } catch (error: any) {
-      if (__DEV__) console.error('Erro ao carregar consultas:', error);
+    } catch (error: unknown) {
+      showErrorAlert(error, 'Erro ao carregar consultas');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  }
+
+  function isPendingPayment(status: string) {
+    const normalized = (status ?? '').toString().toLowerCase();
+    return (
+      normalized.includes('pend') ||
+      normalized.includes('aguard') ||
+      normalized.includes('waiting') ||
+      normalized.includes('unpaid')
+    );
+  }
+
+  function handlePay(consulta: Consulta) {
+    navigation.navigate('Payment', {
+      consultaId: consulta.id,
+      amount: 150,
+    });
   }
 
   async function handleLogout() {
@@ -181,6 +199,16 @@ export default function Dashboard({ navigation }: any) {
               <Text style={styles.consultaDate}>
                 📅 {formatDate(consulta.data)}
               </Text>
+
+              {isPendingPayment(consulta.status) && (
+                <TouchableOpacity
+                  style={styles.payButton}
+                  onPress={() => handlePay(consulta)}
+                >
+                  <Text style={styles.payButtonText}>💳 Pagar consulta</Text>
+                </TouchableOpacity>
+              )}
+
               {consulta.meetLink && (
                 <TouchableOpacity style={styles.meetButton}>
                   <Text style={styles.meetButtonText}>🎥 Entrar na consulta</Text>
@@ -334,6 +362,17 @@ const styles = StyleSheet.create({
   consultaDate: {
     fontSize: 14,
     color: '#007AFF',
+  },
+  payButton: {
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  payButtonText: {
+    color: '#fff',
+    fontWeight: '700',
   },
   meetButton: {
     backgroundColor: '#E3F2FD',

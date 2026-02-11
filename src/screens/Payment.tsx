@@ -44,6 +44,8 @@ export default function Payment({ navigation, route }: any) {
 
   const isRealFlow = Boolean(consultaId);
 
+  const createdForConsultaIdRef = useRef<string | null>(null);
+
   function cleanupPolling() {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
@@ -102,11 +104,17 @@ export default function Payment({ navigation, route }: any) {
   async function createPixPayment() {
     if (!consultaId) return;
 
+    if (createdForConsultaIdRef.current === consultaId && paymentId) {
+      // Already created for this consulta; avoid duplicate charges.
+      return;
+    }
+
     setCreatingPayment(true);
     try {
       const data = await criarPagamento({ consultaId, metodoPagamento: 'pix' });
       const id = data?.id;
       if (id) setPaymentId(id);
+      createdForConsultaIdRef.current = consultaId;
 
       const qr = normalizeQrImageUri(data?.qrCodeBase64 ?? data?.qrCode);
       setQrImageUri(qr);
@@ -124,6 +132,13 @@ export default function Payment({ navigation, route }: any) {
 
   useEffect(() => {
     if (!isRealFlow) return;
+
+    // If consultaId changes, reset payment state.
+    if (createdForConsultaIdRef.current !== consultaId) {
+      setPaymentId(null);
+      setQrImageUri('');
+      setPixCopyCode('');
+    }
 
     if (method === 'pix') {
       createPixPayment();
