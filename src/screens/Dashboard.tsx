@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { fetchMinhasConsultas, Consulta } from '../services/api';
 import { clearAuthSession, getUser } from '../storage/asyncStorage';
 import { showErrorAlert } from '../utils/errorHandler';
+import Colors from '../theme/colors';
 
 export default function Dashboard({ navigation }: any) {
   const [consultas, setConsultas] = useState<Consulta[]>([]);
@@ -61,24 +63,17 @@ export default function Dashboard({ navigation }: any) {
   }
 
   async function handleLogout() {
-    Alert.alert(
-      'Sair',
-      'Tem certeza que deseja sair?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            await clearAuthSession();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
-          },
+    Alert.alert('Sair', 'Tem certeza que deseja sair?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Sair',
+        style: 'destructive',
+        onPress: async () => {
+          await clearAuthSession();
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         },
-      ]
-    );
+      },
+    ]);
   }
 
   function onRefresh() {
@@ -90,13 +85,13 @@ export default function Dashboard({ navigation }: any) {
     switch (status.toLowerCase()) {
       case 'confirmado':
       case 'realizada':
-        return '#4CAF50';
+        return Colors.success;
       case 'pendente':
-        return '#FF9800';
+        return Colors.warning;
       case 'cancelada':
-        return '#F44336';
+        return Colors.error;
       default:
-        return '#9E9E9E';
+        return Colors.textMuted;
     }
   }
 
@@ -114,7 +109,7 @@ export default function Dashboard({ navigation }: any) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -123,20 +118,28 @@ export default function Dashboard({ navigation }: any) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Olá, {userName}!</Text>
-          <Text style={styles.subtitle}>Bem-vindo de volta</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <Image
+              source={require('../../assets/seja_atendido_fundo_transparente.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <View>
+              <Text style={styles.greeting}>Olá, {userName}!</Text>
+              <Text style={styles.subtitle}>Bem-vindo de volta</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Sair</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Sair</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         {/* Quick Actions */}
         <Text style={styles.sectionTitle}>Ações Rápidas</Text>
@@ -144,24 +147,33 @@ export default function Dashboard({ navigation }: any) {
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('BookAppointment')}
+            activeOpacity={0.7}
           >
-            <Text style={styles.actionIcon}>📅</Text>
-            <Text style={styles.actionText}>Agendar Consulta</Text>
+            <View style={[styles.actionIconBg, { backgroundColor: Colors.accent }]}>
+              <Text style={styles.actionIcon}>+</Text>
+            </View>
+            <Text style={styles.actionText}>Agendar{'\n'}Consulta</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.7}
           >
-            <Text style={styles.actionIcon}>👤</Text>
-            <Text style={styles.actionText}>Meu Perfil</Text>
+            <View style={[styles.actionIconBg, { backgroundColor: '#EDE7F6' }]}>
+              <Text style={styles.actionIcon}>P</Text>
+            </View>
+            <Text style={styles.actionText}>Meu{'\n'}Perfil</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('Chat')}
+            activeOpacity={0.7}
           >
-            <Text style={styles.actionIcon}>💬</Text>
+            <View style={[styles.actionIconBg, { backgroundColor: '#E3F2FD' }]}>
+              <Text style={styles.actionIcon}>C</Text>
+            </View>
             <Text style={styles.actionText}>Chat</Text>
           </TouchableOpacity>
         </View>
@@ -170,11 +182,12 @@ export default function Dashboard({ navigation }: any) {
         <Text style={styles.sectionTitle}>Próximas Consultas</Text>
         {consultas.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyIcon}>—</Text>
             <Text style={styles.emptyText}>Nenhuma consulta agendada</Text>
             <TouchableOpacity
               style={styles.emptyButton}
               onPress={() => navigation.navigate('BookAppointment')}
+              activeOpacity={0.85}
             >
               <Text style={styles.emptyButtonText}>Agendar agora</Text>
             </TouchableOpacity>
@@ -186,37 +199,29 @@ export default function Dashboard({ navigation }: any) {
                 <Text style={styles.consultaDoctor}>
                   {consulta.medico?.usuario?.nome || 'Médico'}
                 </Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(consulta.status) },
-                  ]}
-                >
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(consulta.status) }]}>
                   <Text style={styles.statusText}>{consulta.status}</Text>
                 </View>
               </View>
               <Text style={styles.consultaMotivo}>{consulta.motivo}</Text>
-              <Text style={styles.consultaDate}>
-                📅 {formatDate(consulta.data)}
-              </Text>
+              <Text style={styles.consultaDate}>{formatDate(consulta.data)}</Text>
 
               {isPendingPayment(consulta.status) && (
-                <TouchableOpacity
-                  style={styles.payButton}
-                  onPress={() => handlePay(consulta)}
-                >
-                  <Text style={styles.payButtonText}>💳 Pagar consulta</Text>
+                <TouchableOpacity style={styles.payButton} onPress={() => handlePay(consulta)}>
+                  <Text style={styles.payButtonText}>Pagar consulta</Text>
                 </TouchableOpacity>
               )}
 
               {consulta.meetLink && (
                 <TouchableOpacity style={styles.meetButton}>
-                  <Text style={styles.meetButtonText}>🎥 Entrar na consulta</Text>
+                  <Text style={styles.meetButtonText}>Entrar na consulta</Text>
                 </TouchableOpacity>
               )}
             </View>
           ))
         )}
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </View>
   );
@@ -225,110 +230,154 @@ export default function Dashboard({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.bg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: Colors.bg,
   },
   header: {
-    backgroundColor: '#007AFF',
-    padding: 20,
-    paddingTop: 50,
+    backgroundColor: Colors.primary,
+    paddingTop: 52,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+    tintColor: '#fff',
+  },
   greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
   },
   logoutButton: {
-    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   logoutText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 13,
   },
   content: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-    marginTop: 8,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 14,
+    marginTop: 4,
+    letterSpacing: -0.3,
   },
   actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 28,
   },
   actionCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    marginHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginHorizontal: 5,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
     elevation: 3,
   },
+  actionIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   actionIcon: {
-    fontSize: 28,
-    marginBottom: 8,
+    fontSize: 24,
   },
   actionText: {
     fontSize: 12,
-    color: '#666',
+    color: Colors.textSecondary,
     textAlign: 'center',
+    fontWeight: '600',
+    lineHeight: 16,
   },
   emptyState: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 32,
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    padding: 36,
     alignItems: 'center',
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   emptyIcon: {
     fontSize: 48,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 16,
+    color: Colors.textSecondary,
+    marginBottom: 18,
   },
   emptyButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 14,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   emptyButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 15,
   },
   consultaCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 18,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
     elevation: 3,
   },
   consultaHeader: {
@@ -339,34 +388,35 @@ const styles = StyleSheet.create({
   },
   consultaDoctor: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: Colors.textPrimary,
     flex: 1,
   },
   statusBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
   statusText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     textTransform: 'capitalize',
   },
   consultaMotivo: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.textSecondary,
     marginBottom: 8,
   },
   consultaDate: {
     fontSize: 14,
-    color: '#007AFF',
+    color: Colors.primary,
+    fontWeight: '600',
   },
   payButton: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: Colors.success,
+    padding: 14,
+    borderRadius: 12,
     marginTop: 12,
     alignItems: 'center',
   },
@@ -375,14 +425,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   meetButton: {
-    backgroundColor: '#E3F2FD',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: Colors.accent,
+    padding: 14,
+    borderRadius: 12,
     marginTop: 12,
     alignItems: 'center',
   },
   meetButtonText: {
-    color: '#007AFF',
-    fontWeight: '600',
+    color: Colors.primary,
+    fontWeight: '700',
   },
 });

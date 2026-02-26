@@ -1,112 +1,92 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ActivityIndicator,
   TouchableOpacity,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { confirmEmailRequest } from '../services/api';
-import { showErrorAlert } from '../utils/errorHandler';
+import Colors from '../theme/colors';
+
+type Status = 'loading' | 'success' | 'error';
 
 export default function ConfirmEmail({ route, navigation }: any) {
-  const token: string | undefined = useMemo(() => {
-    const value = route?.params?.token;
-    return typeof value === 'string' ? value : undefined;
-  }, [route?.params?.token]);
-
-  const [loading, setLoading] = useState(true);
-  const [done, setDone] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { token } = route.params || {};
+  const [status, setStatus] = useState<Status>('loading');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function run() {
-      if (!token) {
-        setLoading(false);
-        setErrorMessage('Token inválido ou ausente no link.');
-        return;
-      }
-
-      try {
-        await confirmEmailRequest(token);
-        if (cancelled) return;
-        setDone(true);
-      } catch (error: unknown) {
-        if (cancelled) return;
-        setErrorMessage(null);
-        showErrorAlert(error, 'Não foi possível confirmar seu email');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (token) {
+      confirmEmail();
+    } else {
+      setStatus('error');
+      setMessage('Token de confirmação não encontrado.');
     }
-
-    run();
-    return () => {
-      cancelled = true;
-    };
   }, [token]);
 
-  function goToLogin() {
-    navigation.replace('Login');
-  }
-
-  function retry() {
-    setLoading(true);
-    setErrorMessage(null);
-    setDone(false);
-
-    // Re-dispatch by re-navigating to same screen with same params.
-    navigation.replace('ConfirmEmail', { token });
-  }
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.subtitle}>Confirmando email…</Text>
-      </View>
-    );
-  }
-
-  if (done) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Email confirmado</Text>
-        <Text style={styles.subtitle}>Sua conta está pronta para uso.</Text>
-
-        <TouchableOpacity style={styles.button} onPress={goToLogin}>
-          <Text style={styles.buttonText}>Ir para login</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  async function confirmEmail() {
+    setStatus('loading');
+    try {
+      await confirmEmailRequest(token);
+      setStatus('success');
+      setMessage('Seu email foi confirmado com sucesso!');
+    } catch (error: any) {
+      setStatus('error');
+      const serverMsg =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        'Não foi possível confirmar o email. Tente novamente.';
+      setMessage(serverMsg);
+    }
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Falha ao confirmar</Text>
-      <Text style={styles.subtitle}>{errorMessage ?? 'Tente novamente.'}</Text>
+      <View style={styles.card}>
+        {status === 'loading' && (
+          <>
+            <ActivityIndicator size="large" color={Colors.primary} style={styles.icon} />
+            <Text style={styles.title}>Confirmando email...</Text>
+            <Text style={styles.subtitle}>Aguarde um momento</Text>
+          </>
+        )}
 
-      <View style={{ height: 12 }} />
+        {status === 'success' && (
+          <>
+            <View style={[styles.iconCircle, { backgroundColor: Colors.successLight }]}>
+              <Text style={styles.iconEmoji}>✓</Text>
+            </View>
+            <Text style={styles.title}>Email Confirmado!</Text>
+            <Text style={styles.subtitle}>{message}</Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => navigation.replace('Login')}
+            >
+              <Text style={styles.buttonText}>Ir para Login</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => {
-          if (!token) {
-            Alert.alert('Erro', 'Token inválido. Abra o link novamente.');
-            return;
-          }
-          retry();
-        }}
-      >
-        <Text style={styles.buttonText}>Tentar novamente</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.linkButton} onPress={goToLogin}>
-        <Text style={styles.linkText}>Voltar para login</Text>
-      </TouchableOpacity>
+        {status === 'error' && (
+          <>
+            <View style={[styles.iconCircle, { backgroundColor: Colors.errorLight }]}>
+              <Text style={styles.iconEmoji}>✗</Text>
+            </View>
+            <Text style={styles.title}>Erro na Confirmação</Text>
+            <Text style={styles.subtitle}>{message}</Text>
+            <TouchableOpacity style={styles.button} onPress={confirmEmail}>
+              <Text style={styles.buttonText}>Tentar Novamente</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => navigation.replace('Login')}
+            >
+              <Text style={styles.linkText}>Voltar para Login</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -114,46 +94,78 @@ export default function ConfirmEmail({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
+    backgroundColor: Colors.bg,
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 24,
   },
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: 24,
+    padding: 36,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 380,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  icon: {
+    marginBottom: 20,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconEmoji: {
+    fontSize: 36,
+  },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 10,
+    letterSpacing: -0.3,
     textAlign: 'center',
-    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 8,
+    lineHeight: 22,
+    marginBottom: 24,
   },
   button: {
-    marginTop: 16,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    width: '100%',
     alignItems: 'center',
-    minWidth: 200,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   linkButton: {
     marginTop: 16,
-    alignItems: 'center',
+    padding: 8,
   },
   linkText: {
-    fontSize: 14,
-    color: '#007AFF',
+    color: Colors.primary,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

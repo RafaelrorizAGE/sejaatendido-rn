@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { registerRequest } from '../services/api';
 import { showErrorAlert } from '../utils/errorHandler';
+import Colors from '../theme/colors';
 
 export default function SignupScreen({ navigation }: any) {
   const [nome, setNome] = useState('');
@@ -59,101 +60,101 @@ export default function SignupScreen({ navigation }: any) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Image
           source={require('../../assets/seja_atendido_fundo_transparente.png')}
           style={styles.logo}
           resizeMode="contain"
         />
+
         <Text style={styles.title}>Criar Conta</Text>
-        <Text style={styles.subtitle}>Preencha seus dados</Text>
+        <Text style={styles.subtitle}>Preencha seus dados para começar</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Nome completo"
-          value={nome}
-          onChangeText={setNome}
-          editable={!loading}
-        />
+        <View style={styles.formCard}>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome completo"
+              placeholderTextColor={Colors.textMuted}
+              value={nome}
+              onChangeText={setNome}
+              editable={!loading}
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          editable={!loading}
-        />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={Colors.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!loading}
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Senha (mínimo 6 caracteres)"
-          value={senha}
-          onChangeText={setSenha}
-          secureTextEntry
-          editable={!loading}
-        />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Senha (mínimo 6 caracteres)"
+              placeholderTextColor={Colors.textMuted}
+              value={senha}
+              onChangeText={setSenha}
+              secureTextEntry
+              editable={!loading}
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Confirmar senha"
-          value={confirmaSenha}
-          onChangeText={setConfirmaSenha}
-          secureTextEntry
-          editable={!loading}
-        />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirmar senha"
+              placeholderTextColor={Colors.textMuted}
+              value={confirmaSenha}
+              onChangeText={setConfirmaSenha}
+              secureTextEntry
+              editable={!loading}
+            />
+          </View>
 
-        <Text style={styles.label}>Tipo de conta:</Text>
-        <View style={styles.tipoContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tipoButton,
-              tipo === 'PACIENTE' && styles.tipoButtonActive,
-            ]}
-            onPress={() => setTipo('PACIENTE')}
-            disabled={loading}
-          >
-            <Text
-              style={[
-                styles.tipoText,
-                tipo === 'PACIENTE' && styles.tipoTextActive,
-              ]}
+          <Text style={styles.label}>Tipo de conta</Text>
+          <View style={styles.tipoContainer}>
+            <TouchableOpacity
+              style={[styles.tipoButton, tipo === 'PACIENTE' && styles.tipoButtonActive]}
+              onPress={() => setTipo('PACIENTE')}
+              disabled={loading}
             >
-              Paciente
-            </Text>
-          </TouchableOpacity>
+              <Text style={[styles.tipoText, tipo === 'PACIENTE' && styles.tipoTextActive]}>
+                Paciente
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tipoButton, tipo === 'MEDICO' && styles.tipoButtonActive]}
+              onPress={() => setTipo('MEDICO')}
+              disabled={loading}
+            >
+              <Text style={[styles.tipoText, tipo === 'MEDICO' && styles.tipoTextActive]}>
+                Médico
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
-            style={[
-              styles.tipoButton,
-              tipo === 'MEDICO' && styles.tipoButtonActive,
-            ]}
-            onPress={() => setTipo('MEDICO')}
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignup}
             disabled={loading}
+            activeOpacity={0.85}
           >
-            <Text
-              style={[
-                styles.tipoText,
-                tipo === 'MEDICO' && styles.tipoTextActive,
-              ]}
-            >
-              Médico
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Cadastrar</Text>
+            )}
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSignup}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Cadastrar</Text>
-          )}
-        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.linkButton}
@@ -172,96 +173,129 @@ export default function SignupScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.bg,
   },
   scrollContent: {
-    padding: 20,
-    paddingTop: 40,
+    padding: 24,
+    paddingTop: 50,
+    paddingBottom: 40,
   },
   logo: {
     width: '100%',
-    height: 140,
-    marginBottom: 8,
+    height: 120,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 28,
+    fontWeight: '800',
+    color: Colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 15,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
+  },
+  formCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.inputBg,
+    borderRadius: 14,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  inputIcon: {
+    fontSize: 18,
+    marginRight: 10,
   },
   input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 16,
+    flex: 1,
+    paddingVertical: 15,
     fontSize: 16,
-    marginBottom: 16,
+    color: Colors.textPrimary,
   },
   label: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 12,
-    fontWeight: '600',
+    fontSize: 15,
+    color: Colors.textPrimary,
+    marginBottom: 10,
+    fontWeight: '700',
+    marginTop: 4,
   },
   tipoContainer: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   tipoButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 2,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
+    borderColor: Colors.border,
+    backgroundColor: Colors.inputBg,
     alignItems: 'center',
   },
   tipoButtonActive: {
-    borderColor: '#FF1744',
-    backgroundColor: '#FFE4EA',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.accent,
+  },
+  tipoEmoji: {
+    fontSize: 22,
+    marginBottom: 4,
   },
   tipoText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    color: Colors.textSecondary,
     fontWeight: '600',
   },
   tipoTextActive: {
-    color: '#FF1744',
+    color: Colors.primary,
   },
   button: {
-    backgroundColor: '#FF1744',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 5,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   linkButton: {
-    marginTop: 20,
+    marginTop: 24,
     alignItems: 'center',
   },
   linkText: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.textSecondary,
   },
   linkTextBold: {
-    color: '#FF1744',
-    fontWeight: '600',
+    color: Colors.primary,
+    fontWeight: '700',
   },
 });

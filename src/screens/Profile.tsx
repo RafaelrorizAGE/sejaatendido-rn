@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { getUser, clearAuthSession, User } from '../storage/asyncStorage';
+import Colors from '../theme/colors';
 
 export default function Profile({ navigation }: any) {
   const [user, setUser] = useState<User | null>(null);
@@ -43,7 +44,6 @@ export default function Profile({ navigation }: any) {
   async function handleSave() {
     setSaving(true);
     try {
-      // Aqui você faria a chamada API para atualizar o perfil
       Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
       setEditing(false);
     } catch (error) {
@@ -61,10 +61,7 @@ export default function Profile({ navigation }: any) {
         style: 'destructive',
         onPress: async () => {
           await clearAuthSession();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-          });
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         },
       },
     ]);
@@ -73,7 +70,7 @@ export default function Profile({ navigation }: any) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -83,7 +80,7 @@ export default function Profile({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Voltar</Text>
+          <Text style={styles.backButton}>Voltar</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meu Perfil</Text>
         <TouchableOpacity onPress={() => setEditing(!editing)}>
@@ -91,7 +88,7 @@ export default function Profile({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
           <View style={styles.avatar}>
@@ -137,6 +134,7 @@ export default function Profile({ navigation }: any) {
               onChangeText={setTelefone}
               editable={editing}
               placeholder="(00) 00000-0000"
+              placeholderTextColor={Colors.textMuted}
               keyboardType="phone-pad"
             />
           </View>
@@ -159,14 +157,12 @@ export default function Profile({ navigation }: any) {
         {/* Security Section */}
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Segurança</Text>
-
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>🔒 Alterar Senha</Text>
+            <Text style={styles.menuItemText}>Alterar Senha</Text>
             <Text style={styles.menuItemArrow}>›</Text>
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>📱 Autenticação em 2 Fatores</Text>
+            <Text style={styles.menuItemText}>Autenticação em 2 Fatores</Text>
             <Text style={styles.menuItemArrow}>›</Text>
           </TouchableOpacity>
         </View>
@@ -174,29 +170,25 @@ export default function Profile({ navigation }: any) {
         {/* Preferences Section */}
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Preferências</Text>
-
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>🔔 Notificações</Text>
+            <Text style={styles.menuItemText}>Notificações</Text>
             <Text style={styles.menuItemArrow}>›</Text>
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>🌙 Tema do App</Text>
+            <Text style={styles.menuItemText}>Tema do App</Text>
             <Text style={styles.menuItemArrow}>›</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>🌍 Idioma</Text>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]}>
+            <Text style={styles.menuItemText}>Idioma</Text>
             <Text style={styles.menuItemArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Logout Button */}
+        {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>Sair da Conta</Text>
         </TouchableOpacity>
 
-        {/* App Version */}
         <Text style={styles.versionText}>Seja Atendido v1.0.0</Text>
       </ScrollView>
     </View>
@@ -206,117 +198,140 @@ export default function Profile({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.bg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: Colors.bg,
   },
   header: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary,
     padding: 16,
-    paddingTop: 50,
+    paddingTop: 52,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   backButton: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '600',
   },
   headerTitle: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   editButton: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '600',
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   avatarSection: {
     alignItems: 'center',
     marginBottom: 24,
+    marginTop: 8,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#007AFF',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   avatarText: {
-    fontSize: 40,
+    fontSize: 38,
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.textPrimary,
     marginBottom: 8,
+    letterSpacing: -0.3,
   },
   typeBadge: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 16,
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 18,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
   },
   typeText: {
-    color: '#007AFF',
-    fontWeight: '600',
+    color: Colors.primary,
+    fontWeight: '700',
+    fontSize: 13,
     textTransform: 'capitalize',
   },
   infoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: Colors.card,
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 17,
+    fontWeight: '800',
+    color: Colors.textPrimary,
     marginBottom: 16,
+    letterSpacing: -0.3,
   },
   inputGroup: {
     marginBottom: 16,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    backgroundColor: Colors.inputBg,
+    borderRadius: 14,
     padding: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: Colors.border,
+    color: Colors.textPrimary,
   },
   inputDisabled: {
-    backgroundColor: '#f0f0f0',
-    color: '#888',
+    backgroundColor: Colors.inputBg,
+    color: Colors.textSecondary,
   },
   inputHint: {
     fontSize: 12,
-    color: '#888',
-    marginTop: 4,
+    color: Colors.textMuted,
+    marginTop: 6,
   },
   saveButton: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 12,
+    backgroundColor: Colors.success,
+    borderRadius: 14,
     padding: 16,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
   saveButtonDisabled: {
     opacity: 0.6,
@@ -324,7 +339,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   menuItem: {
     flexDirection: 'row',
@@ -332,33 +347,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.borderLight,
   },
   menuItemText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: Colors.textPrimary,
+    fontWeight: '500',
   },
   menuItemArrow: {
-    fontSize: 20,
-    color: '#999',
+    fontSize: 22,
+    color: Colors.textMuted,
   },
   logoutButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: 14,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#F44336',
-    marginBottom: 16,
+    borderColor: Colors.error,
+    marginBottom: 12,
   },
   logoutButtonText: {
-    color: '#F44336',
+    color: Colors.error,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   versionText: {
     textAlign: 'center',
-    color: '#888',
+    color: Colors.textMuted,
     fontSize: 12,
     marginBottom: 32,
   },

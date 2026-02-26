@@ -1,206 +1,196 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
-import { clearAuthSession, getUser } from '../storage/asyncStorage';
+import { getUser, clearAuthSession, User } from '../storage/asyncStorage';
+import Colors from '../theme/colors';
 
-interface Consulta {
+interface DemoConsulta {
   id: string;
   paciente: string;
+  data: string;
   hora: string;
-  tipo: string;
   status: string;
+  motivo: string;
 }
 
+const DEMO_CONSULTAS: DemoConsulta[] = [
+  { id: '1', paciente: 'Maria Santos', data: '2025-01-20', hora: '09:00', status: 'CONFIRMADA', motivo: 'Check-up anual' },
+  { id: '2', paciente: 'João Oliveira', data: '2025-01-20', hora: '10:30', status: 'PENDENTE', motivo: 'Dor de cabeça recorrente' },
+  { id: '3', paciente: 'Ana Costa', data: '2025-01-21', hora: '14:00', status: 'CONFIRMADA', motivo: 'Retorno' },
+  { id: '4', paciente: 'Carlos Pereira', data: '2025-01-22', hora: '08:30', status: 'PENDENTE', motivo: 'Consulta inicial' },
+];
+
 export default function DoctorDashboard({ navigation }: any) {
-  const [consultas, setConsultas] = useState<Consulta[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [userName, setUserName] = useState('');
-  const [stats, setStats] = useState({
-    totalPacientes: 0,
-    consultasHoje: 0,
-    pendentes: 0,
-  });
+  const [consultas] = useState<DemoConsulta[]>(DEMO_CONSULTAS);
 
   useEffect(() => {
-    loadData();
-    loadUserName();
+    loadUser();
   }, []);
 
-  async function loadUserName() {
-    const user = await getUser();
-    if (user) {
-      setUserName(user.nome.split(' ')[0]);
-    }
+  async function loadUser() {
+    const userData = await getUser();
+    setUser(userData);
   }
 
-  async function loadData() {
-    try {
-      // Simular dados - substituir por chamada API real
-      setConsultas([
-        { id: '1', paciente: 'Maria Silva', hora: '09:00', tipo: 'Consulta', status: 'confirmado' },
-        { id: '2', paciente: 'João Santos', hora: '10:30', tipo: 'Retorno', status: 'confirmado' },
-        { id: '3', paciente: 'Ana Costa', hora: '14:00', tipo: 'Primeira consulta', status: 'pendente' },
-      ]);
-      setStats({
-        totalPacientes: 156,
-        consultasHoje: 8,
-        pendentes: 3,
-      });
-    } catch (error) {
-      if (__DEV__) console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   async function handleLogout() {
-    Alert.alert('Sair', 'Tem certeza que deseja sair?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          await clearAuthSession();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-          });
-        },
-      },
-    ]);
+    await clearAuthSession();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   }
 
-  function onRefresh() {
-    setRefreshing(true);
-    loadData();
-  }
-
-  function getStatusColor(status: string) {
-    switch (status.toLowerCase()) {
-      case 'confirmado':
-        return '#4CAF50';
-      case 'pendente':
-        return '#FF9800';
-      case 'cancelada':
-        return '#F44336';
-      default:
-        return '#9E9E9E';
-    }
-  }
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
+  const stats = {
+    hoje: consultas.filter((c) => c.data === '2025-01-20').length,
+    pendentes: consultas.filter((c) => c.status === 'PENDENTE').length,
+    confirmadas: consultas.filter((c) => c.status === 'CONFIRMADA').length,
+    total: consultas.length,
+  };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Dr. {userName}</Text>
-          <Text style={styles.subtitle}>Área do Médico</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greeting}>Olá, Dr(a).</Text>
+            <Text style={styles.userName}>{user?.nome || 'Médico'}</Text>
+          </View>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Sair</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Sair</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.doctor} />
         }
       >
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
+        {/* Stats */}
+        <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.totalPacientes}</Text>
-            <Text style={styles.statLabel}>Pacientes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.consultasHoje}</Text>
+            <View style={[styles.statIconBg, { backgroundColor: Colors.doctorLight }]}>
+              <Text style={styles.statIcon}>H</Text>
+            </View>
+            <Text style={styles.statNum}>{stats.hoje}</Text>
             <Text style={styles.statLabel}>Hoje</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.pendentes}</Text>
+            <View style={[styles.statIconBg, { backgroundColor: Colors.warningLight }]}>
+              <Text style={styles.statIcon}>P</Text>
+            </View>
+            <Text style={styles.statNum}>{stats.pendentes}</Text>
             <Text style={styles.statLabel}>Pendentes</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBg, { backgroundColor: Colors.successLight }]}>
+              <Text style={styles.statIcon}>C</Text>
+            </View>
+            <Text style={styles.statNum}>{stats.confirmadas}</Text>
+            <Text style={styles.statLabel}>Confirmadas</Text>
           </View>
         </View>
 
-        {/* Today's Appointments */}
-        <Text style={styles.sectionTitle}>Consultas de Hoje</Text>
-        {consultas.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyText}>Nenhuma consulta hoje</Text>
-          </View>
-        ) : (
-          consultas.map((consulta) => (
-            <View key={consulta.id} style={styles.consultaCard}>
-              <View style={styles.consultaHeader}>
-                <View style={styles.consultaTime}>
-                  <Text style={styles.timeText}>{consulta.hora}</Text>
+        {/* Upcoming appointments */}
+        <Text style={styles.sectionTitle}>Próximas Consultas</Text>
+
+        {consultas.map((consulta) => (
+          <View key={consulta.id} style={styles.consultaCard}>
+            <View style={styles.consultaHeader}>
+              <View style={styles.consultaPatient}>
+                <View style={styles.patientAvatar}>
+                  <Text style={styles.patientInitial}>
+                    {consulta.paciente.charAt(0)}
+                  </Text>
                 </View>
-                <View style={styles.consultaInfo}>
-                  <Text style={styles.pacienteName}>{consulta.paciente}</Text>
-                  <Text style={styles.consultaTipo}>{consulta.tipo}</Text>
+                <View>
+                  <Text style={styles.patientName}>{consulta.paciente}</Text>
+                  <Text style={styles.consultaMotivo}>{consulta.motivo}</Text>
                 </View>
-                <View
+              </View>
+              <View
+                style={[
+                  styles.statusBadge,
+                  consulta.status === 'CONFIRMADA' ? styles.statusConfirmed : styles.statusPending,
+                ]}
+              >
+                <Text
                   style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(consulta.status) },
+                    styles.statusText,
+                    consulta.status === 'CONFIRMADA'
+                      ? styles.statusTextConfirmed
+                      : styles.statusTextPending,
                   ]}
                 >
-                  <Text style={styles.statusText}>{consulta.status}</Text>
-                </View>
-              </View>
-              <View style={styles.consultaActions}>
-                <TouchableOpacity style={styles.actionButton}>
-                  <Text style={styles.actionButtonText}>Ver detalhes</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionButton, styles.primaryButton]}>
-                  <Text style={styles.primaryButtonText}>Iniciar consulta</Text>
-                </TouchableOpacity>
+                  {consulta.status}
+                </Text>
               </View>
             </View>
-          ))
-        )}
+
+            <View style={styles.consultaFooter}>
+              <View style={styles.timeBadge}>
+                <Text style={styles.timeText}>{consulta.hora}</Text>
+              </View>
+              <Text style={styles.dateText}>{consulta.data}</Text>
+            </View>
+
+            <View style={styles.consultaActions}>
+              <TouchableOpacity style={styles.actionBtnAccept}>
+                <Text style={styles.actionBtnAcceptText}>Iniciar Consulta</Text>
+              </TouchableOpacity>
+              {consulta.status === 'PENDENTE' && (
+                <TouchableOpacity style={styles.actionBtnConfirm}>
+                  <Text style={styles.actionBtnConfirmText}>Confirmar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ))}
 
         {/* Quick Actions */}
         <Text style={styles.sectionTitle}>Ações Rápidas</Text>
-        <View style={styles.actionsContainer}>
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.quickAction}>
+            <View style={[styles.quickIconBg, { backgroundColor: Colors.doctorLight }]}>
+              <Text style={styles.quickIcon}>P</Text>
+            </View>
+            <Text style={styles.quickLabel}>Prontuários</Text>
+          </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionCard}
+            style={styles.quickAction}
+            onPress={() => navigation.navigate('Chat')}
+          >
+            <View style={[styles.quickIconBg, { backgroundColor: Colors.accent }]}>
+              <Text style={styles.quickIcon}>M</Text>
+            </View>
+            <Text style={styles.quickLabel}>Mensagens</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickAction}
             onPress={() => navigation.navigate('Profile')}
           >
-            <Text style={styles.actionIcon}>👤</Text>
-            <Text style={styles.actionText}>Meu Perfil</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionCard}>
-            <Text style={styles.actionIcon}>📊</Text>
-            <Text style={styles.actionText}>Relatórios</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionCard}>
-            <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionText}>Configurações</Text>
+            <View style={[styles.quickIconBg, { backgroundColor: Colors.warningLight }]}>
+              <Text style={styles.quickIcon}>C</Text>
+            </View>
+            <Text style={styles.quickLabel}>Perfil</Text>
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </View>
   );
@@ -209,190 +199,247 @@ export default function DoctorDashboard({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: Colors.bg,
   },
   header: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.doctor,
     padding: 20,
-    paddingTop: 50,
+    paddingTop: 52,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '600',
   },
-  logoutButton: {
-    padding: 8,
+  userName: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginTop: 2,
+  },
+  logoutBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   logoutText: {
     color: '#fff',
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
-  statsContainer: {
+  /* Stats */
+  statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
   },
   statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
     padding: 16,
-    alignItems: 'center',
+    flex: 1,
     marginHorizontal: 4,
-    shadowColor: '#000',
+    alignItems: 'center',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+  statIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statIcon: {
+    fontSize: 18,
+  },
+  statNum: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.textPrimary,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
-    marginTop: 4,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+    marginTop: 2,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-    marginTop: 8,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 14,
+    letterSpacing: -0.3,
   },
-  emptyState: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-  },
+  /* Consulta cards */
   consultaCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   consultaHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
-  consultaTime: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  timeText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-  consultaInfo: {
+  consultaPatient: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  pacienteName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+  patientAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: Colors.doctorLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  consultaTipo: {
-    fontSize: 14,
-    color: '#666',
+  patientInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.doctor,
+  },
+  patientName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  consultaMotivo: {
+    fontSize: 13,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   statusBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  statusConfirmed: {
+    backgroundColor: Colors.successLight,
+  },
+  statusPending: {
+    backgroundColor: Colors.warningLight,
   },
   statusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  statusTextConfirmed: {
+    color: Colors.success,
+  },
+  statusTextPending: {
+    color: Colors.warning,
+  },
+  consultaFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  timeBadge: {
+    backgroundColor: Colors.inputBg,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 12,
+  },
+  timeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  dateText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
   },
   consultaActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
+    gap: 10,
   },
-  actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
+  actionBtnAccept: {
+    flex: 1,
+    backgroundColor: Colors.doctor,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
   },
-  actionButtonText: {
-    color: '#666',
-    fontWeight: '600',
-  },
-  primaryButton: {
-    backgroundColor: '#4CAF50',
-  },
-  primaryButtonText: {
+  actionBtnAcceptText: {
     color: '#fff',
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
-  actionsContainer: {
+  actionBtnConfirm: {
+    flex: 1,
+    backgroundColor: Colors.successLight,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  actionBtnConfirmText: {
+    color: Colors.success,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  /* Quick actions */
+  actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    gap: 10,
   },
-  actionCard: {
+  quickAction: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    marginHorizontal: 4,
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  actionIcon: {
-    fontSize: 28,
+  quickIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  actionText: {
+  quickIcon: {
+    fontSize: 20,
+  },
+  quickLabel: {
     fontSize: 12,
-    color: '#666',
+    fontWeight: '700',
+    color: Colors.textPrimary,
     textAlign: 'center',
   },
 });

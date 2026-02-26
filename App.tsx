@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { getAuthSession } from './src/storage/asyncStorage';
+import Colors from './src/theme/colors';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -44,9 +45,8 @@ export default function App() {
   async function checkAuth() {
     try {
       const { token, user } = await getAuthSession();
-      
+
       if (token && user) {
-        // Navegar baseado no tipo de usuário
         switch (user.tipo) {
           case 'ADMIN':
             setInitialRoute('AdminDashboard');
@@ -70,8 +70,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,198 +8,113 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Image,
+  Platform,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
-import { criarPagamento, fetchPagamentoById } from '../services/api';
+import { criarPagamento, fetchPagamentoById, PagamentoResponse } from '../services/api';
 import { showErrorAlert } from '../utils/errorHandler';
+import Colors from '../theme/colors';
 
-type PaymentMethod = 'pix' | 'card';
+type PaymentMethod = 'pix' | 'cartao';
 
-export default function Payment({ navigation, route }: any) {
+export default function Payment({ route, navigation }: any) {
+  const { consultaId, valor } = route.params || {};
   const [method, setMethod] = useState<PaymentMethod>('pix');
   const [loading, setLoading] = useState(false);
-  const [creatingPayment, setCreatingPayment] = useState(false);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
-  const [qrImageUri, setQrImageUri] = useState<string>('');
-  const [pixCopyCode, setPixCopyCode] = useState<string>('');
-  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pagamento, setPagamento] = useState<PagamentoResponse | null>(null);
+  const [status, setStatus] = useState<string>('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Card form
   const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
-
-  const consultaId: string | undefined = useMemo(() => {
-    const value = route?.params?.consultaId;
-    return typeof value === 'string' ? value : undefined;
-  }, [route?.params?.consultaId]);
-
-  const amount: number = useMemo(() => {
-    const value = route?.params?.amount;
-    return typeof value === 'number' ? value : 150;
-  }, [route?.params?.amount]);
-
-  const isRealFlow = Boolean(consultaId);
-
-  const createdForConsultaIdRef = useRef<string | null>(null);
-
-  function cleanupPolling() {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-    if (pollingTimeoutRef.current) {
-      clearTimeout(pollingTimeoutRef.current);
-      pollingTimeoutRef.current = null;
-    }
-  }
-
-  function normalizeQrImageUri(value: unknown): string {
-    if (typeof value !== 'string') return '';
-    const trimmed = value.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    if (trimmed.startsWith('data:image/')) return trimmed;
-    // assume base64 png
-    return `data:image/png;base64,${trimmed}`;
-  }
-
-  function normalizePixCopyCode(data: any): string {
-    return (
-      data?.copiaECola ??
-      data?.copiaCola ??
-      data?.pixCopiaECola ??
-      data?.pixCode ??
-      ''
-    );
-  }
-
-  async function startPollingStatus(id: string) {
-    cleanupPolling();
-
-    pollingIntervalRef.current = setInterval(async () => {
-      try {
-        const data = await fetchPagamentoById(id);
-        const status = (data?.status ?? '').toString().toLowerCase();
-
-        if (status === 'aprovado' || status === 'approved' || status === 'paid' || status === 'pago') {
-          cleanupPolling();
-          Alert.alert('Sucesso', 'Pagamento confirmado!', [
-            { text: 'OK', onPress: () => navigation.goBack() },
-          ]);
-        }
-      } catch (error) {
-        if (__DEV__) console.error('Erro ao checar pagamento:', error);
-      }
-    }, 5000);
-
-    pollingTimeoutRef.current = setTimeout(() => {
-      cleanupPolling();
-    }, 10 * 60 * 1000);
-  }
-
-  async function createPixPayment() {
-    if (!consultaId) return;
-
-    if (createdForConsultaIdRef.current === consultaId && paymentId) {
-      // Already created for this consulta; avoid duplicate charges.
-      return;
-    }
-
-    setCreatingPayment(true);
-    try {
-      const data = await criarPagamento({ consultaId, metodoPagamento: 'pix' });
-      const id = data?.id;
-      if (id) setPaymentId(id);
-      createdForConsultaIdRef.current = consultaId;
-
-      const qr = normalizeQrImageUri(data?.qrCodeBase64 ?? data?.qrCode);
-      setQrImageUri(qr);
-      setPixCopyCode(normalizePixCopyCode(data));
-
-      if (id) {
-        await startPollingStatus(id);
-      }
-    } catch (error) {
-      showErrorAlert(error, 'Não foi possível gerar pagamento');
-    } finally {
-      setCreatingPayment(false);
-    }
-  }
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
 
   useEffect(() => {
-    if (!isRealFlow) return;
-
-    // If consultaId changes, reset payment state.
-    if (createdForConsultaIdRef.current !== consultaId) {
-      setPaymentId(null);
-      setQrImageUri('');
-      setPixCopyCode('');
-    }
-
-    if (method === 'pix') {
-      createPixPayment();
-    } else {
-      cleanupPolling();
-    }
-
     return () => {
-      cleanupPolling();
+      if (pollRef.current) clearInterval(pollRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRealFlow, method, consultaId]);
+  }, []);
 
-  async function handlePayment() {
-    if (isRealFlow) {
-      // Card flow: request payment and open the checkout URL.
-      if (!consultaId) return;
-
-      setLoading(true);
-      try {
-        const data = await criarPagamento({ consultaId, metodoPagamento: 'cartao' });
-        const url: string | undefined = data?.linkPagamento ?? data?.paymentUrl;
-
-        if (!url) {
-          Alert.alert('Erro', 'Link de pagamento não retornado pelo servidor.');
-          return;
+  const startPolling = useCallback(
+    (paymentId: string) => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        try {
+          const data = await fetchPagamentoById(paymentId);
+          if (data.status === 'APROVADO' || data.status === 'approved') {
+            setStatus('APROVADO');
+            if (pollRef.current) clearInterval(pollRef.current);
+            Alert.alert('Pagamento Aprovado!', 'Sua consulta foi confirmada.');
+          }
+        } catch {
+          // polling error, ignore
         }
+      }, 5000);
+    },
+    []
+  );
 
-        await WebBrowser.openBrowserAsync(url);
-      } catch (error) {
-        showErrorAlert(error, 'Não foi possível iniciar pagamento');
-      } finally {
-        setLoading(false);
-      }
-
+  async function handlePixPayment() {
+    if (!consultaId) {
+      Alert.alert('Erro', 'ID da consulta não encontrado');
       return;
     }
-
-    // Simulated fallback
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const data = await criarPagamento({
+        consultaId,
+        metodoPagamento: 'pix',
+      });
+      setPagamento(data);
+      setStatus(data.status || 'PENDENTE');
+      startPolling(data.id);
+    } catch (error) {
+      showErrorAlert(error, 'Erro ao gerar pagamento PIX');
+    } finally {
       setLoading(false);
-      Alert.alert('Pagamento Confirmado!', 'Seu pagamento foi processado com sucesso.', [
-        { text: 'OK', onPress: () => navigation.navigate('Dashboard') },
-      ]);
-    }, 2000);
+    }
   }
 
-  async function copyPixCode() {
-    if (isRealFlow) {
-      if (!pixCopyCode) {
-        Alert.alert('Erro', 'Código PIX ainda não disponível.');
-        return;
-      }
-
-      await Clipboard.setStringAsync(pixCopyCode);
-      Alert.alert('Código PIX', 'Código copiado para a área de transferência!');
+  async function handleCardPayment() {
+    if (!consultaId) {
+      Alert.alert('Erro', 'ID da consulta não encontrado');
       return;
     }
+    if (!cardNumber || !cardName || !cardExpiry || !cardCvv) {
+      Alert.alert('Atenção', 'Preencha todos os dados do cartão');
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await criarPagamento({
+        consultaId,
+        metodoPagamento: 'card',
+      });
+      setPagamento(data);
 
-    Alert.alert('Código PIX', 'Código copiado para a área de transferência!');
+      if (data.linkPagamento || data.paymentUrl) {
+        const url = data.linkPagamento || data.paymentUrl || '';
+        await WebBrowser.openBrowserAsync(url);
+      }
+
+      setStatus(data.status || 'PROCESSANDO');
+      startPolling(data.id);
+    } catch (error) {
+      showErrorAlert(error, 'Erro ao processar pagamento');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCopyPix() {
+    const code = pagamento?.copiaCola || pagamento?.copiaECola || '';
+    if (code) {
+      await Clipboard.setStringAsync(code);
+      Alert.alert('Copiado!', 'Código PIX copiado para a área de transferência');
+    }
   }
 
   return (
@@ -207,143 +122,156 @@ export default function Payment({ navigation, route }: any) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Voltar</Text>
+          <Text style={styles.backButton}>Voltar</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Pagamento</Text>
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Amount Card */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Amount */}
         <View style={styles.amountCard}>
-          <Text style={styles.amountLabel}>Valor da Consulta</Text>
-          <Text style={styles.amountValue}>R$ {amount.toFixed(2)}</Text>
+          <Text style={styles.amountLabel}>Valor da consulta</Text>
+          <Text style={styles.amountValue}>
+            R$ {valor ? Number(valor).toFixed(2) : '150,00'}
+          </Text>
         </View>
 
-        {/* Payment Method Tabs */}
-        <View style={styles.tabsContainer}>
+        {/* Method tabs */}
+        <View style={styles.tabs}>
           <TouchableOpacity
             style={[styles.tab, method === 'pix' && styles.tabActive]}
             onPress={() => setMethod('pix')}
           >
             <Text style={[styles.tabText, method === 'pix' && styles.tabTextActive]}>
-              💎 PIX
+              PIX
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, method === 'card' && styles.tabActive]}
-            onPress={() => setMethod('card')}
+            style={[styles.tab, method === 'cartao' && styles.tabActive]}
+            onPress={() => setMethod('cartao')}
           >
-            <Text style={[styles.tabText, method === 'card' && styles.tabTextActive]}>
-              💳 Cartão
+            <Text style={[styles.tabText, method === 'cartao' && styles.tabTextActive]}>
+              Cartão
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* PIX Payment */}
-        {method === 'pix' && (
-          <View style={styles.paymentSection}>
-            <View style={styles.qrContainer}>
-              {isRealFlow ? (
-                creatingPayment ? (
-                  <View style={styles.qrPlaceholder}>
-                    <ActivityIndicator />
-                    <Text style={styles.qrLabel}>Gerando pagamento…</Text>
-                  </View>
-                ) : qrImageUri ? (
-                  <Image
-                    source={{ uri: qrImageUri }}
-                    style={styles.qrImage}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <View style={styles.qrPlaceholder}>
-                    <Text style={styles.qrText}>📱</Text>
-                    <Text style={styles.qrLabel}>QR Code indisponível</Text>
-                  </View>
-                )
-              ) : (
-                <View style={styles.qrPlaceholder}>
-                  <Text style={styles.qrText}>📱</Text>
-                  <Text style={styles.qrLabel}>QR Code PIX</Text>
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.pixInstructions}>
-              Escaneie o QR Code acima no app do seu banco ou copie o código PIX.
-            </Text>
-
-            <TouchableOpacity style={styles.copyButton} onPress={copyPixCode}>
-              <Text style={styles.copyButtonText}>📋 Copiar código PIX</Text>
-            </TouchableOpacity>
-
-            {!isRealFlow && (
-              <TouchableOpacity
-                style={[styles.payButton, loading && styles.payButtonDisabled]}
-                onPress={handlePayment}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.payButtonText}>Confirmar Pagamento</Text>
-                )}
-              </TouchableOpacity>
-            )}
-
-            {isRealFlow && paymentId ? (
-              <Text style={styles.waitingText}>Aguardando confirmação do pagamento…</Text>
-            ) : null}
+        {/* Status banner */}
+        {status === 'APROVADO' && (
+          <View style={styles.approvedBanner}>
+            <Text style={styles.approvedText}>Pagamento Aprovado!</Text>
           </View>
         )}
 
-        {/* Card Payment */}
-        {method === 'card' && (
-          <View style={styles.paymentSection}>
+        {/* PIX Method */}
+        {method === 'pix' && (
+          <View style={styles.methodCard}>
+            {!pagamento ? (
+              <>
+                <Text style={styles.methodTitle}>Pagamento via PIX</Text>
+                <Text style={styles.methodDesc}>
+                  Clique abaixo para gerar o código PIX. O pagamento é confirmado automaticamente.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.payButton, loading && styles.payButtonDisabled]}
+                  onPress={handlePixPayment}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.payButtonText}>Gerar PIX</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.methodTitle}>PIX Gerado</Text>
+
+                {(pagamento.qrCode || pagamento.qrCodeBase64) && (
+                  <View style={styles.qrPlaceholder}>
+                    <Text style={styles.qrPlaceholderText}>QR Code</Text>
+                    <Text style={styles.qrHint}>
+                      Escaneie com o app do seu banco
+                    </Text>
+                  </View>
+                )}
+
+                {(pagamento.copiaCola || pagamento.copiaECola) && (
+                  <View style={styles.pixCodeSection}>
+                    <Text style={styles.pixCodeLabel}>Código Copia e Cola:</Text>
+                    <View style={styles.pixCodeBox}>
+                      <Text style={styles.pixCode} numberOfLines={3}>
+                        {pagamento.copiaCola || pagamento.copiaECola}
+                      </Text>
+                    </View>
+                    <TouchableOpacity style={styles.copyButton} onPress={handleCopyPix}>
+                      <Text style={styles.copyButtonText}>Copiar Código</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <Text style={styles.pollingHint}>
+                  Aguardando confirmação do pagamento...
+                </Text>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Card Method */}
+        {method === 'cartao' && (
+          <View style={styles.methodCard}>
+            <Text style={styles.methodTitle}>Dados do Cartão</Text>
+
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Número do cartão</Text>
+              <Text style={styles.inputLabel}>Número do Cartão</Text>
               <TextInput
                 style={styles.input}
-                placeholder="0000 0000 0000 0000"
                 value={cardNumber}
                 onChangeText={setCardNumber}
-                keyboardType="numeric"
+                placeholder="0000 0000 0000 0000"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="number-pad"
                 maxLength={19}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nome no cartão</Text>
+              <Text style={styles.inputLabel}>Nome do Titular</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Nome como está no cartão"
                 value={cardName}
                 onChangeText={setCardName}
+                placeholder="Como aparece no cartão"
+                placeholderTextColor={Colors.textMuted}
                 autoCapitalize="characters"
               />
             </View>
 
             <View style={styles.rowInputs}>
-              <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+              <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
                 <Text style={styles.inputLabel}>Validade</Text>
                 <TextInput
                   style={styles.input}
+                  value={cardExpiry}
+                  onChangeText={setCardExpiry}
                   placeholder="MM/AA"
-                  value={expiry}
-                  onChangeText={setExpiry}
-                  keyboardType="numeric"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="number-pad"
                   maxLength={5}
                 />
               </View>
-              <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={styles.inputLabel}>CVV</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="123"
-                  value={cvv}
-                  onChangeText={setCvv}
-                  keyboardType="numeric"
+                  value={cardCvv}
+                  onChangeText={setCardCvv}
+                  placeholder="000"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="number-pad"
                   maxLength={4}
                   secureTextEntry
                 />
@@ -352,27 +280,19 @@ export default function Payment({ navigation, route }: any) {
 
             <TouchableOpacity
               style={[styles.payButton, loading && styles.payButtonDisabled]}
-              onPress={handlePayment}
+              onPress={handleCardPayment}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.payButtonText}>
-                  💳 Pagar R$ {amount.toFixed(2)}
-                </Text>
+                <Text style={styles.payButtonText}>Pagar com Cartão</Text>
               )}
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Security Info */}
-        <View style={styles.securityInfo}>
-          <Text style={styles.securityText}>🔒 Pagamento 100% seguro</Text>
-          <Text style={styles.securitySubtext}>
-            Seus dados são protegidos com criptografia de ponta a ponta.
-          </Text>
-        </View>
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -381,171 +301,227 @@ export default function Payment({ navigation, route }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.bg,
   },
   header: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary,
     padding: 16,
-    paddingTop: 50,
+    paddingTop: 52,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   backButton: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '600',
   },
   headerTitle: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
+  /* Amount */
   amountCard: {
-    backgroundColor: '#007AFF',
-    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: 20,
     padding: 24,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   amountLabel: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
   },
   amountValue: {
     color: '#fff',
     fontSize: 36,
-    fontWeight: 'bold',
-    marginTop: 4,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
-  tabsContainer: {
+  /* Tabs */
+  tabs: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
     padding: 4,
-    marginBottom: 24,
+    marginBottom: 20,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 12,
   },
   tabActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary,
   },
   tabText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textSecondary,
   },
   tabTextActive: {
     color: '#fff',
   },
-  paymentSection: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  qrContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  qrPlaceholder: {
-    width: 200,
-    height: 200,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  qrImage: {
-    width: 240,
-    height: 240,
-    alignSelf: 'center',
-  },
-  qrText: {
-    fontSize: 64,
-  },
-  qrLabel: {
-    marginTop: 8,
-    color: '#666',
-    fontSize: 14,
-  },
-  pixInstructions: {
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  copyButton: {
-    backgroundColor: '#f0f0f0',
+  /* Approved */
+  approvedBanner: {
+    backgroundColor: Colors.successLight,
+    borderRadius: 14,
     padding: 16,
-    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.success,
+  },
+  approvedText: {
+    color: Colors.success,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  /* Method Card */
+  methodCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  methodTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 10,
+    letterSpacing: -0.3,
+  },
+  methodDesc: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  /* QR */
+  qrPlaceholder: {
+    backgroundColor: Colors.inputBg,
+    borderRadius: 16,
+    padding: 40,
     alignItems: 'center',
     marginBottom: 16,
   },
-  copyButtonText: {
-    color: '#333',
-    fontWeight: '600',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+  qrPlaceholderText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.textSecondary,
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: '#f5f5f5',
+  qrHint: {
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  pixCodeSection: {
+    marginBottom: 16,
+  },
+  pixCodeLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  pixCodeBox: {
+    backgroundColor: Colors.inputBg,
     borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+  },
+  pixCode: {
+    fontSize: 12,
+    color: Colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  copyButton: {
+    backgroundColor: Colors.accent,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  copyButtonText: {
+    color: Colors.primary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  pollingHint: {
+    textAlign: 'center',
+    color: Colors.textMuted,
+    fontSize: 13,
+    marginTop: 12,
+  },
+  /* Card inputs */
+  inputGroup: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  input: {
+    backgroundColor: Colors.inputBg,
+    borderRadius: 14,
     padding: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: Colors.border,
+    color: Colors.textPrimary,
   },
   rowInputs: {
     flexDirection: 'row',
   },
+  /* Pay button */
   payButton: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 12,
+    backgroundColor: Colors.success,
+    borderRadius: 14,
     padding: 18,
     alignItems: 'center',
     marginTop: 8,
+    shadowColor: Colors.success,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   payButtonDisabled: {
     opacity: 0.6,
   },
   payButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  waitingText: {
-    marginTop: 16,
-    textAlign: 'center',
-    color: '#666',
-  },
-  securityInfo: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  securityText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4CAF50',
-  },
-  securitySubtext: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 4,
-    textAlign: 'center',
+    fontSize: 17,
+    fontWeight: '800',
   },
 });
