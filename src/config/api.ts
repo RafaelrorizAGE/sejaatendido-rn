@@ -4,7 +4,7 @@ type EnvVars = {
 
 const ENV: Record<'dev' | 'staging' | 'production', EnvVars> = {
   dev: {
-    API_URL: 'http://localhost:3001',
+    API_URL: 'https://sejaatendido-backend.onrender.com',
   },
   staging: {
     API_URL: 'https://sejaatendido-backend.onrender.com',
