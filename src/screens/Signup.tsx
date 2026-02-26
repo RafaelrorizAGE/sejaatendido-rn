@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { registerRequest } from '../services/api';
 import { showErrorAlert } from '../utils/errorHandler';
@@ -59,6 +60,11 @@ export default function SignupScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Image
+          source={require('../../assets/seja_atendido_fundo_transparente.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Criar Conta</Text>
         <Text style={styles.subtitle}>Preencha seus dados</Text>
 
@@ -170,7 +176,12 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 40,
+  },
+  logo: {
+    width: '100%',
+    height: 140,
+    marginBottom: 8,
   },
   title: {
     fontSize: 32,
@@ -215,8 +226,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tipoButtonActive: {
-    borderColor: '#007AFF',
-    backgroundColor: '#E3F2FD',
+    borderColor: '#FF1744',
+    backgroundColor: '#FFE4EA',
   },
   tipoText: {
     fontSize: 16,
@@ -224,10 +235,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tipoTextActive: {
-    color: '#007AFF',
+    color: '#FF1744',
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#FF1744',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -250,7 +261,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   linkTextBold: {
-    color: '#007AFF',
+    color: '#FF1744',
     fontWeight: '600',
   },
 });

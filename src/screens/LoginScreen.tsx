@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { loginRequest } from '../services/api';
 import { saveAuthSession } from '../storage/asyncStorage';
@@ -57,7 +58,11 @@ export default function LoginScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>Seja Atendido</Text>
+        <Image
+          source={require('../../assets/seja_atendido_fundo_transparente.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.subtitle}>Entre com sua conta</Text>
 
         <TextInput
@@ -115,13 +120,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
   subtitle: {
     fontSize: 16,
     color: '#666',
@@ -137,8 +135,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
   },
+  logo: {
+    width: '100%',
+    height: 180,
+    marginBottom: 20,
+  },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#FF1744',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -161,7 +164,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   linkTextBold: {
-    color: '#007AFF',
+    color: '#FF1744',
     fontWeight: '600',
   },
 });

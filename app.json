@@ -5,11 +5,11 @@
     "scheme": "sejaatendido",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/seja_atendido_fundo_transparente.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/seja_atendido_fundo_transparente.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -23,7 +23,7 @@
     "android": {
       "package": "br.com.sejaatendido.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/seja_atendido_fundo_transparente.png",
         "backgroundColor": "#ffffff"
       },
       "usesCleartextTraffic": false,
