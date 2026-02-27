@@ -10,7 +10,7 @@ const ENV: Record<'dev' | 'staging' | 'production', EnvVars> = {
     API_URL: 'https://sejaatendido-backend.onrender.com',
   },
   production: {
-    API_URL: 'https://sejaatendido.api.br',
+    API_URL: 'https://sejaatendido-backend.onrender.com',
   },
 };
 

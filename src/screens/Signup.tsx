@@ -22,6 +22,8 @@ export default function SignupScreen({ navigation }: any) {
   const [senha, setSenha] = useState('');
   const [confirmaSenha, setConfirmaSenha] = useState('');
   const [tipo, setTipo] = useState<'PACIENTE' | 'MEDICO'>('PACIENTE');
+  const [crm, setCrm] = useState('');
+  const [diplomaAnexado, setDiplomaAnexado] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSignup() {
@@ -40,14 +42,21 @@ export default function SignupScreen({ navigation }: any) {
       return;
     }
 
+    if (tipo === 'MEDICO' && !crm.trim()) {
+      Alert.alert('Erro', 'Informe o número do CRM');
+      return;
+    }
+
     setLoading(true);
     try {
       await registerRequest({ nome, email, senha, tipo });
-      Alert.alert(
-        'Sucesso!',
-        'Conta criada com sucesso. Faça login para continuar.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-      );
+      const msg =
+        tipo === 'MEDICO'
+          ? 'Conta criada com sucesso. Seu cadastro será analisado pela equipe antes da aprovação.'
+          : 'Conta criada com sucesso. Faça login para continuar.';
+      Alert.alert('Sucesso!', msg, [
+        { text: 'OK', onPress: () => navigation.navigate('Login') },
+      ]);
     } catch (error: unknown) {
       showErrorAlert(error, 'Erro ao criar conta');
     } finally {
@@ -141,6 +150,58 @@ export default function SignupScreen({ navigation }: any) {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {tipo === 'MEDICO' && (
+            <View style={styles.doctorSection}>
+              <Text style={styles.doctorSectionTitle}>Dados Profissionais</Text>
+
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Número do CRM"
+                  placeholderTextColor={Colors.textMuted}
+                  value={crm}
+                  onChangeText={setCrm}
+                  keyboardType="default"
+                  autoCapitalize="characters"
+                  editable={!loading}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.uploadArea,
+                  diplomaAnexado && styles.uploadAreaAttached,
+                ]}
+                onPress={() => {
+                  setDiplomaAnexado(!diplomaAnexado);
+                  if (!diplomaAnexado) {
+                    Alert.alert(
+                      'Diploma / Certificados',
+                      'Funcionalidade de upload em breve. Seu diploma e certificados serão verificados pela equipe.'
+                    );
+                  }
+                }}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <View style={styles.uploadIconContainer}>
+                  <Text style={styles.uploadIcon}>{diplomaAnexado ? '+' : '+'}</Text>
+                </View>
+                <Text style={[
+                  styles.uploadText,
+                  diplomaAnexado && styles.uploadTextAttached,
+                ]}>
+                  {diplomaAnexado ? 'Documento selecionado' : 'Anexar Diploma / Certificados'}
+                </Text>
+                <Text style={styles.uploadHint}>
+                  {diplomaAnexado
+                    ? 'Toque para remover'
+                    : 'PDF, JPG ou PNG (em breve)'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -297,5 +358,59 @@ const styles = StyleSheet.create({
   linkTextBold: {
     color: Colors.primary,
     fontWeight: '700',
+  },
+  doctorSection: {
+    marginTop: 4,
+    marginBottom: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  doctorSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.doctor,
+    marginBottom: 12,
+  },
+  uploadArea: {
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    backgroundColor: Colors.inputBg,
+  },
+  uploadAreaAttached: {
+    borderColor: Colors.success,
+    backgroundColor: '#E8F5E9',
+  },
+  uploadIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  uploadIcon: {
+    fontSize: 22,
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  uploadText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  uploadTextAttached: {
+    color: Colors.success,
+  },
+  uploadHint: {
+    fontSize: 12,
+    color: Colors.textMuted,
   },
 });
